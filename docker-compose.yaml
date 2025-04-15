@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # nginx:
+  #   image: nginx:latest
+  #   container_name: my-nginx
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./index.html:/usr/share/nginx/index.html
+  #     - ./nginx.conf:/etc/nginx/nginx.conf
+  #   restart: unless-stopped
+  #   networks:
+  #     - my_network
+
+  neo4j:
+    image: neo4j:5
+    container_name: neo4j-sn
+    ports:
+      - 7474:7474 # WEB-панель
+      - 7687:7687 # Коннектор для приложения
+    environment:
+      NEO4J_AUTH: neo4j/bubilda123
+    volumes:
+      #- ./neo4j/logs:/logs
+      - ./neo4j/config:/config
+      #- ./neo4j/data:/data
+      - ./neo4j/plugins:/plugins
+    networks:
+      - sn_network
+
+  user_follow:
+    image: user-follow-sn:latest
+    container_name: user-follow-sn
+    ports:
+      - "40001:40001"
+    networks:
+      - sn_network
+
+networks:
+  sn_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/17
