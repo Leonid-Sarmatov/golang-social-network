@@ -112,7 +112,7 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 
 	// Выполнение транзакции для создания поста
 	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := "CREATE (p:Post {ID: $id, AutorUserName: $name, TimeOfCreate: $time, Color: $color}) RETURN p"
+		query := "CREATE (p:Post {ID: $id, AutorUserName: $name, TimeOfCreate: $time, Color: $color})"
 		params := map[string]any{
 			"id":    post.ID,
 			"name":  post.AutorUserName,
@@ -145,9 +145,37 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 // }
 
 // Добавить нового пользователя
-// func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
+func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
+	ctx := context.Background()
+	s := neo.openWriteSession(ctx)
 
-// }
+	defer func() {
+		err := neo.closeSession(ctx, s)
+		if err != nil {
+			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+		}
+	}()
+
+	// Выполнение транзакции для создания поста
+	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := "CREATE (u:User {UserName: $name})"
+		params := map[string]any{
+			"name":  user.UserName,
+		}
+
+		res, err := tx.Run(ctx, query, params)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, res.Err()
+	})
+	if err != nil {
+		log.Fatalf("Ошибка транзакции: %v", err)
+	}
+
+	return nil
+}
 
 // Проверить, существует ли такое имя пользователя в системе или нет
 // func (neo *Neo4jStorage)CheckExistsUserName(userName string) (bool, error) {
@@ -155,9 +183,39 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 // }
 
 // Подписать одного пользователя на другого
-// func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) error {
+func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) error {
+	ctx := context.Background()
+	s := neo.openWriteSession(ctx)
 
-// }
+	defer func() {
+		err := neo.closeSession(ctx, s)
+		if err != nil {
+			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+		}
+	}()
+
+	// Выполнение транзакции для создания поста
+	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		//query := "CREATE (us:User)-[s:SUBSCRIBER]->(u:User) WERE"
+		query := "MATCH (a:User), (b:User) WHERE a.UserName = $username1 AND b.UserName = $username2 CREATE (a)-[:SUBSCRIBER]->(b)"
+		params := map[string]any{
+			"username1": subscriberUserName,
+			"username2": userName,
+		}
+
+		res, err := tx.Run(ctx, query, params)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, res.Err()
+	})
+	if err != nil {
+		log.Fatalf("Ошибка транзакции: %v", err)
+	}
+
+	return nil
+}
 
 /*
 StartConnect запускает процесс

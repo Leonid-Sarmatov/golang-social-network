@@ -29,6 +29,25 @@ func main() {
 	idgen.NewIDGenerator().GenAndSetIDForPost(p)
 	log.Printf("Сообщение: %v", db.AddNewPost(p))
 
+	user1 := &core.User{
+		UserName: "Петрович",
+	}
+
+	user2 := &core.User{
+		UserName: "Говночист",
+	}
+
+	user3 := &core.User{
+		UserName: "Турист",
+	}
+
+	log.Printf("Сообщение: %v", db.AddNewUser(user1))
+	log.Printf("Сообщение: %v", db.AddNewUser(user2))
+	log.Printf("Сообщение: %v", db.AddNewUser(user3))
+
+	log.Printf("Сообщение: %v", db.SubscribeUsers(user2.UserName, user1.UserName))
+	log.Printf("Сообщение: %v", db.SubscribeUsers(user3.UserName, user1.UserName))
+
 	for {
 
 	}
