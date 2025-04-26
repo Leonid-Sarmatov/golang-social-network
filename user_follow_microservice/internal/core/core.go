@@ -68,13 +68,12 @@ func NewCore(ps postStorage, us userStorage, idg idGenerator) *Core {
 }
 
 /*
-serializationPost сериализует пост в байтовое представление
+AddNewUser регистрирует нового пользователя
 
 Аргументы:
-  - post *core.Post: указатель на сериализуемый пост
+  - userName string: Имя пользователя
 
 Возвращает:
-  - []byte: сериализованный пост
   - error: ошибка
 */
 func (core *Core)AddNewUser(userName string) error {

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simple Social Network</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Navigation Bar -->
+  <nav class="bg-white shadow">
+    <div class="container mx-auto px-4 py-3 flex space-x-6">
+      <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="feed">Feed</button>
+      <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="profile">Profile</button>
+      <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="search">Search</button>
+      <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="settings">Settings</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6 flex-1">
+
+    <div id="feed" class="tab-content">
+      <h1 class="text-2xl font-semibold mb-4">News Feed</h1>
+      <div class="bg-white p-4 rounded shadow">Feed posts go here</div>
+    </div>
+
+    <div id="profile" class="tab-content hidden">
+      <h1 class="text-2xl font-semibold mb-4">Your Profile</h1>
+      <div class="bg-white p-4 rounded shadow mb-4">Profile details go here</div>
+      <div class="bg-white p-4 rounded shadow">User posts list goes here</div>
+    </div>
+
+    <div id="search" class="tab-content hidden">
+      <h1 class="text-2xl font-semibold mb-4">Search Users</h1>
+      <div class="bg-white p-4 rounded shadow">Search functionality goes here</div>
+    </div>
+
+    <div id="settings" class="tab-content hidden">
+      <h1 class="text-2xl font-semibold mb-4">Profile Settings</h1>
+      <div class="bg-white p-4 rounded shadow">Settings form goes here</div>
+    </div>
+
+  </main>
+
+  <!-- Tab switching script -->
+  <script>
+    const links = document.querySelectorAll('.tab-link');
+    const tabs = document.querySelectorAll('.tab-content');
+
+    links.forEach(link => {
+      link.addEventListener('click', () => {
+        tabs.forEach(tab => tab.classList.add('hidden'));
+        document.getElementById(link.dataset.tab).classList.remove('hidden');
+
+        links.forEach(l => l.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600'));
+        link.classList.add('text-blue-600');
+      });
+    });
+  </script>
+
+</body>
+</html>

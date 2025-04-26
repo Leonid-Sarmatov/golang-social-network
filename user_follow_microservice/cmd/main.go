@@ -16,6 +16,7 @@ import (
 func main() {
 
 	time.Sleep(5 * time.Second)
+	return
 
 	db := storage.NewNeo4jStorage()
 	db.StartConnect()
