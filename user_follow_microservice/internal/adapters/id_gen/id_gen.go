@@ -19,6 +19,15 @@ func (idg *IDGenerator) getHash(data []byte) []byte {
 	return hash[:]
 }
 
+/*
+GenAndSetIDForPost сериализует пост в байтовое представление
+
+Аргументы:
+  - post *core.Post: указатель на пост для которого генерируется ID
+
+Возвращает:
+  - error: ошибка
+*/
 func (idg *IDGenerator) GenAndSetIDForPost(post *core.Post) error {
 	postBytes, err := serializePost(post)
 	if err != nil {
@@ -41,11 +50,6 @@ serializationPost сериализует пост в байтовое предс
 func serializePost(post *core.Post) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
-	// Запись ID
-	// if err := writeBytes(buf, post.ID); err != nil {
-	// 	return nil, err
-	// }
-
 	// Запись имени автора
 	if err := writeBytes(buf, []byte(post.AutorUserName)); err != nil {
 		return nil, err
@@ -61,12 +65,31 @@ func serializePost(post *core.Post) ([]byte, error) {
 		return nil, err
 	}
 
-	// Запись пользователей лайкнувших пост
-	// for _, name := range post.LikedThePost {
-	// 	if err := writeBytes(buf, []byte(name)); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+	return buf.Bytes(), nil
+}
+
+/*
+serializationPost сериализует пост в байтовое представление
+
+Аргументы:
+  - post *core.Post: указатель на сериализуемый пост
+
+Возвращает:
+  - []byte: сериализованный пост
+  - error: ошибка
+*/
+func serializeUser(user *core.User) ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	// Запись имени автора
+	if err := writeBytes(buf, []byte(user.UserName)); err != nil {
+		return nil, err
+	}
+
+	// Запись времени регистрации
+	if err := binary.Write(buf, binary.LittleEndian, user.TimeOfCreate); err != nil {
+		return nil, err
+	}
 
 	return buf.Bytes(), nil
 } 

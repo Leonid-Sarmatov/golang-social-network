@@ -1,12 +1,15 @@
 package core
 
 import (
-
+	"fmt"
+	"time"
 )
 
 // Структура пользователя
 type User struct {
+	ID []byte // Уникальный идентификатор
 	UserName string // Имя пользователя
+	TimeOfCreate int64 // Время регистрации
 	Subscribers []string // Подписчики (слайс с именами пользователей, которые подписаны на пользователя)
 	Subscriptions []string // Подписки (слайс с именами пользователей, на которых подписан пользователь)
 }
@@ -40,8 +43,60 @@ type userStorage interface {
 	SubscribeUsers(userName, subscriberUserName string) error
 }
 
+// Генератор уникальных ID для постов и для пользователей
+type idGenerator interface {
+	// Сгенерировать и записать ID для поста
+	GenAndSetIDForPost(post *Post) error
+	// Сгенерировать и записать ID для пользователя
+	GenAndSetIDForUser(user *User) error
+}
+
 // Ядро приложения, бизнес-логика
 type Core struct {
-	postStorage
-	userStorage
+	PostStorage postStorage
+	UserStorage userStorage
+	IdGenerator idGenerator
+}
+
+// Конструктор ядра
+func NewCore(ps postStorage, us userStorage, idg idGenerator) *Core {
+	return &Core{
+		PostStorage: ps,
+		UserStorage: us,
+		IdGenerator: idg,
+	}
+}
+
+/*
+serializationPost сериализует пост в байтовое представление
+
+Аргументы:
+  - post *core.Post: указатель на сериализуемый пост
+
+Возвращает:
+  - []byte: сериализованный пост
+  - error: ошибка
+*/
+func (core *Core)AddNewUser(userName string) error {
+	// Проверка уникальности имени пользователя
+	exist, err := core.UserStorage.CheckExistsUserName(userName)
+	if err != nil {
+		return fmt.Errorf("Can not check existence this user name")
+	}
+	if exist {
+		return fmt.Errorf("This user name is already exist")
+	}
+	// Создание пользователя
+	u := &User{
+		UserName: userName,
+		TimeOfCreate: time.Now().Unix(),
+	}
+	// Создание ID
+	core.IdGenerator.GenAndSetIDForUser(u)
+	// Запись в хранилище
+	err = core.UserStorage.AddNewUser(u)
+	if err != nil {
+		return fmt.Errorf("Save user into storage failed")
+	}
+	return nil
 }
