@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package generated;
+
+option go_package = "user_follow_microservice/internal/transport/grpc_server/generated";
+
+service UserAutorization {
+    // Авторизакция и получение токена авторизации
+    rpc LoginUserAndGetToken (LoginUserAndGetTokenRequest) returns (LoginUserAndGetTokenResponse);
+
+    // Регистрация пользователя
+    rpc RegisterNewUser (RegisterNewUserRequest) returns (RegisterNewUserResponse);
+}
+
+message LoginUserAndGetTokenRequest {
+    string user_email = 1;
+    string password = 2;
+}
+
+message LoginUserAndGetTokenResponse {
+    string token = 1;
+}
+
+message RegisterNewUserRequest {
+    string user_name = 1;
+    string user_email = 2;
+    string password = 3;
+}
+
+message RegisterNewUserResponse {
+    string status = 1;
+}

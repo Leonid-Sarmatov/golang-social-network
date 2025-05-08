@@ -8,8 +8,9 @@ services:
       - "80:80"
     volumes:
       - ./index.html:/usr/share/nginx/index.html
+      - ./login.html:/usr/share/nginx/login.html
+      - ./register.html:/usr/share/nginx/register.html
       - ./nginx.conf:/etc/nginx/nginx.conf
-    restart: unless-stopped
     networks:
       - sn_network
 
@@ -26,6 +27,45 @@ services:
       - ./neo4j/config:/config
       #- ./neo4j/data:/data
       - ./neo4j/plugins:/plugins
+    networks:
+      - sn_network
+  
+  postgres:
+    image: postgres:16.1
+    container_name: postgres-users-sn
+    environment:
+      POSTGRES_DB: "users"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "password123"
+    ports:
+      - "5432:5432"
+    networks:
+      - sn_network
+
+  api_gateway:
+    image: api-gateway-sn:latest
+    container_name: api-gateway-sn
+    environment:
+      - USER_AUTORIZATION_HOST=user-autorization-sn
+      - USER_AUTORIZATION_PORT=40001
+    ports:
+      - "8080:8080"
+    networks:
+      - sn_network
+
+  user_autorization:
+    image: user-autorization-sn:latest
+    container_name: user-autorization-sn
+    environment:
+      - PORT=40001
+      - JWT_SECRET=1234
+      - DB_HOST=postgres-users-sn
+      - DB_PORT=5432
+      - DB_NAME=users
+      - DB_USER=admin
+      - DB_PASSWORD=password123
+    ports:
+      - "40002:40001"
     networks:
       - sn_network
 
