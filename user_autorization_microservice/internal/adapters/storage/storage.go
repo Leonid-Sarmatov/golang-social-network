@@ -3,9 +3,17 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"errors"
 	"user_autorization/internal/core"
 
 	_ "github.com/lib/pq"
+)
+
+var (
+	ErrDatabaseConnect = errors.New("ошибка соединения с базой данных")
+	ErrDatabaseRequest = errors.New("ошибка запроса к базе данных")
+	ErrIncorrectInputData = errors.New("некорректные данные на входе")
+	ErrDataNotFound = errors.New("данные не найдены")
 )
 
 type postgresAdapter struct {
@@ -25,7 +33,7 @@ func (p *postgresAdapter) Start(host, port, user, password, dbname string) error
 	// Пробуем создать соединение с базой данных
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
-		return err
+		return errors.Join(ErrDatabaseConnect, err)
 	}
 	p.connection = db
 
@@ -38,24 +46,34 @@ func (p *postgresAdapter) Start(host, port, user, password, dbname string) error
         password VARCHAR(255)
     );`)
 	if err != nil {
-		return err
+		return errors.Join(ErrDatabaseRequest, err)
 	}
 
 	return nil
 }
 
+/*
+IsUserExist проверяет существует ли пользователь в базе данных
+
+Аргументы:
+  - userName string: имя пользователя
+
+Возвращает:
+  - bool: наличие пользователя в системе
+  - error: ошибка
+*/
 func (p *postgresAdapter) IsUserExist(userName string) (bool, error) {
 	rows, err := p.connection.Query("SELECT * FROM users_table WHERE user_name=$1", userName)
 	if err != nil {
-		return false, err
+		return false, errors.Join(ErrDatabaseRequest, err)
 	}
 
 	var u core.User
 	var counter int = 0
 	for rows.Next() {
-		err = rows.Scan(&u.ID, &u.UserName, &u.Password)
+		err = rows.Scan(&u.ID, &u.UserName, &u.UserEmail, &u.Password)
 		if err != nil {
-			return false, err
+			return false, errors.Join(ErrDatabaseRequest, err)
 		}
 		counter += 1
 	}
@@ -66,18 +84,40 @@ func (p *postgresAdapter) IsUserExist(userName string) (bool, error) {
 	return false, nil
 }
 
+/*
+IsUserExist создает нового пользователя в базе данныз
+
+Аргументы:
+  - userName string: имя пользователя
+
+Возвращает:
+  - error: ошибка
+*/
 func (p *postgresAdapter) CreateNewUser(userName, userEmail, password string) error {
 	_, err := p.connection.Exec(
 		`INSERT INTO users_table (user_name, user_email, password) VALUES ($1, $2, $3)`, 
 		userName, userEmail, password,
 	)
-	return err
+	if err != nil {
+		return errors.Join(ErrDatabaseRequest, err)
+	}
+	return nil
 }
 
+/*
+GetUserPassword получает из бд хэшированный пароль
+
+Аргументы:
+  - userEmail string: email пользователя
+
+Возвращает:
+  - string: хэшированный пароль
+  - error: ошибка
+*/
 func (p *postgresAdapter) GetUserPassword(userEmail string) (string, error) {
 	rows, err := p.connection.Query("SELECT password FROM users_table WHERE user_email=$1", userEmail)
 	if err != nil {
-		return "", err
+		return "", errors.Join(ErrDatabaseRequest, err)
 	}
 
 	ps := make([]string, 0)
@@ -85,18 +125,32 @@ func (p *postgresAdapter) GetUserPassword(userEmail string) (string, error) {
 		p := ""
 		err = rows.Scan(&p)
 		if err != nil {
-			return "", err
+			return "", errors.Join(ErrDatabaseRequest, err)
 		}
 		ps = append(ps, p)
+	}
+
+	if len(ps) == 0 {
+		return "", ErrDataNotFound
 	}
 
 	return ps[0], nil
 }
 
+/*
+GetUserPassword получает из бд хэшированный пароль
+
+Аргументы:
+  - userEmail string: email пользователя
+
+Возвращает:
+  - string: хэшированный пароль
+  - error: ошибка
+*/
 func (p *postgresAdapter) GetUserName(userEmail string) (string, error) {
 	rows, err := p.connection.Query("SELECT user_name FROM users_table WHERE user_email=$1", userEmail)
 	if err != nil {
-		return "", err
+		return "", errors.Join(ErrDatabaseRequest, err)
 	}
 
 	ps := make([]string, 0)
@@ -104,10 +158,13 @@ func (p *postgresAdapter) GetUserName(userEmail string) (string, error) {
 		p := ""
 		err = rows.Scan(&p)
 		if err != nil {
-			return "", err
+			return "", errors.Join(ErrDatabaseRequest, err)
 		}
 		ps = append(ps, p)
 	}
 
+	if len(ps) == 0 {
+		return "", ErrDataNotFound
+	}
 	return ps[0], nil
 }

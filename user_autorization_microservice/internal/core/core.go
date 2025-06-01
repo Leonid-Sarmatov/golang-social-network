@@ -2,27 +2,27 @@ package core
 
 import (
 	"errors"
-	//"fmt"
-	"log"
+	"fmt"
+	//"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	ErrDatabaseRequest = errors.New("Ошибка запроса к базе данных")
-	ErrIncorrectData = errors.New("Некорректные данные")
-	ErrReadData = errors.New("Ошибка чтения данных")
-	ErrWriteData = errors.New("Ошибка записи данных")
-	ErrCreateResource = errors.New("Ошибка создания ресурса")
-	ErrModificationResource = errors.New("Ошибка изменения ресурса")
+	ErrDatabaseRequest      = errors.New("ошибка запроса к базе данных")
+	ErrIncorrectData        = errors.New("некорректные данные")
+	ErrReadData             = errors.New("ошибка чтения данных")
+	ErrWriteData            = errors.New("ошибка записи данных")
+	ErrCreateResource       = errors.New("ошибка создания ресурса")
+	ErrModificationResource = errors.New("ошибка изменения ресурса")
 )
 
 // Структура пользователя
 type User struct {
-	ID int // Уникальный идентификатор
-	UserName string // Имя пользователя
+	ID        int    // Уникальный идентификатор
+	UserName  string // Имя пользователя
 	UserEmail string // E-mail
-	Password string // Хэшированный пароль
+	Password  string // Хэшированный пароль
 }
 
 // Абстрактное хранилище пользователей
@@ -45,13 +45,13 @@ type tokenGenerator interface {
 
 // Ядро приложения, бизнес-логика
 type core struct {
-	UserStorage userStorage
+	UserStorage    userStorage
 	TokenGenerator tokenGenerator
 }
 
 func NewCore(us userStorage, tg tokenGenerator) *core {
 	return &core{
-		UserStorage: us,
+		UserStorage:    us,
 		TokenGenerator: tg,
 	}
 }
@@ -62,28 +62,28 @@ func (c *core) LoginUserAndGetToken(userEmail, password string) (string, error) 
 		return "", ErrReadData
 	}
 
-	log.Printf("Получен хэшированный пароль: %v", hashPassword)
+	//log.Printf("Получен хэшированный пароль: %v", hashPassword)
 
 	ok := CompareHashes(hashPassword, password)
-	if !ok {
+	if !ok || password == "" {
 		return "", ErrIncorrectData
 	}
 
-	log.Printf("Пароли совпали")
+	//log.Printf("Пароли совпали")
 
 	userName, err := c.UserStorage.GetUserName(userEmail)
 	if err != nil {
 		return "", ErrReadData
 	}
 
-	log.Printf("Получено имя пользователя: %v", userName)
+	//log.Printf("Получено имя пользователя: %v", userName)
 
 	t, err := c.TokenGenerator.CreateToken(userName, 15)
 	if err != nil {
 		return "", ErrCreateResource
 	}
 
-	log.Printf("LoginUserAndGetToken - OK! Токен: %v", t)
+	//log.Printf("LoginUserAndGetToken - OK! Токен: %v", t)
 
 	return t, nil
 }
@@ -91,21 +91,21 @@ func (c *core) LoginUserAndGetToken(userEmail, password string) (string, error) 
 func (c *core) RegisterNewUser(userName, userEmail, password string) error {
 	exist, err := c.UserStorage.IsUserExist(userName)
 	if err != nil {
-		return ErrReadData
+		return errors.Join(ErrReadData, err)
 	}
 
 	if exist || password == "" {
-		return ErrIncorrectData
+		return errors.Join(ErrIncorrectData, fmt.Errorf("this user name is already exist"))
 	}
 
 	hashPassword, err := GenerateHash(password)
 	if err != nil {
-		return ErrCreateResource
+		return errors.Join(ErrCreateResource, err)
 	}
 
 	err = c.UserStorage.CreateNewUser(userName, userEmail, hashPassword)
 	if err != nil {
-		return ErrWriteData
+		return errors.Join(ErrWriteData, err)
 	}
 
 	return nil
@@ -113,7 +113,6 @@ func (c *core) RegisterNewUser(userName, userEmail, password string) error {
 
 /*
 GenerateHash  создает хеш из строки
-
 */
 func GenerateHash(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)

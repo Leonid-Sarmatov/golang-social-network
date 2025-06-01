@@ -5,13 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Simple Social Network</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .post-container {
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+    .post {
+      transition: all 0.2s ease;
+    }
+    .post:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+  </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
   <!-- Navigation Bar -->
   <nav class="bg-white shadow">
     <div class="container mx-auto px-4 py-3 flex space-x-6">
-      <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="feed">Feed</button>
+      <button class="tab-link text-blue-600 border-b-2 border-blue-600 font-medium" data-tab="feed">Feed</button>
       <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="profile">Profile</button>
       <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="search">Search</button>
       <button class="tab-link text-gray-600 hover:text-blue-600 font-medium" data-tab="settings">Settings</button>
@@ -22,8 +35,30 @@
   <main class="container mx-auto px-4 py-6 flex-1">
 
     <div id="feed" class="tab-content">
-      <h1 class="text-2xl font-semibold mb-4">News Feed</h1>
-      <div class="bg-white p-4 rounded shadow">Feed posts go here</div>
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold">News Feed</h1>
+        <button id="refreshBtn" class="text-blue-600 hover:text-blue-800">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Форма создания поста -->
+      <div class="bg-white p-4 rounded-lg shadow mb-6">
+        <textarea id="postContent" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-3" placeholder="What's on your mind?"></textarea>
+        <div class="flex justify-end">
+          <button id="createPostBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition">
+            Post
+          </button>
+        </div>
+      </div>
+      
+      <!-- Список постов -->
+      <div id="postsContainer" class="post-container space-y-4">
+        <!-- Посты будут загружаться здесь -->
+        <div class="text-center py-8 text-gray-500">Loading posts...</div>
+      </div>
     </div>
 
     <div id="profile" class="tab-content hidden">
@@ -46,18 +81,162 @@
 
   <!-- Tab switching script -->
   <script>
-    const links = document.querySelectorAll('.tab-link');
-    const tabs = document.querySelectorAll('.tab-content');
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      console.log(token)
+      const isAuthPage = window.location.pathname.endsWith('login.html') || 
+                        window.location.pathname.endsWith('register.html');
 
-    links.forEach(link => {
-      link.addEventListener('click', () => {
-        tabs.forEach(tab => tab.classList.add('hidden'));
-        document.getElementById(link.dataset.tab).classList.remove('hidden');
+      if (!token && !isAuthPage) {
+        // Если токена нет и это не страница авторизации/регистрации
+        window.location.href = '/login.html';
+        return;
+      }
 
-        links.forEach(l => l.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600'));
-        link.classList.add('text-blue-600');
-      });
+      if (token) {
+        try {
+          // Парсим токен без проверки подписи (только payload)
+          const payload = parseJwt(token);
+          // Проверяем срок действия
+          if (payload.exp && payload.exp < Date.now() / 1000) {
+            localStorage.removeItem('token');
+            if (!isAuthPage) window.location.href = '/login.html';
+          }
+        } catch (e) {
+          console.error('Invalid token:', e);
+          localStorage.removeItem('token');
+          if (!isAuthPage) window.location.href = '/login.html';
+        }
+      }
+      // Инициализация табов
+      initTabs();
+      // Обработчики для постов
+      initPostHandlers();
     });
+
+    // Функция для парсинга JWT (без проверки подписи)
+    function parseJwt(token) {
+      if (!token || typeof token !== 'string') {
+        throw new Error('Token is not a valid string');
+      }
+      
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid token format');
+      }
+      
+      try {
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        throw new Error('Failed to parse JWT: ' + e.message);
+      }
+    }
+
+    function initTabs() {
+      const links = document.querySelectorAll('.tab-link');
+      const tabs = document.querySelectorAll('.tab-content');
+
+      links.forEach(link => {
+        link.addEventListener('click', () => {
+          tabs.forEach(tab => tab.classList.add('hidden'));
+          document.getElementById(link.dataset.tab).classList.remove('hidden');
+
+          links.forEach(l => l.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600'));
+          link.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+          
+          // При переключении на вкладку feed обновляем посты
+          if (link.dataset.tab === 'feed') {
+            loadPosts();
+          }
+        });
+      });
+    }
+
+    function initPostHandlers() {
+      // Создание поста
+      document.getElementById('createPostBtn').addEventListener('click', createPost);
+      // Обновление ленты
+      document.getElementById('refreshBtn').addEventListener('click', loadPosts);
+      // Отправка поста по нажатию Enter (с зажатым Shift перенос строки)
+      document.getElementById('postContent').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          createPost();
+        }
+      });
+    }
+
+    function renderPosts(posts) {
+      const container = document.getElementById('postsContainer');
+      
+      if (!posts || posts.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-gray-500">
+            No posts yet. Be the first to post!
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = posts.map(post => `
+        <div class="post bg-white p-4 rounded-lg shadow">
+          <div class="flex items-start space-x-3 mb-2">
+            <div class="bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center">
+              <span class="text-gray-600">${post.author ? post.author.charAt(0).toUpperCase() : 'U'}</span>
+            </div>
+            <div class="flex-1">
+              <h3 class="font-medium">${post.author || 'Unknown user'}</h3>
+              <p class="text-xs text-gray-500">${formatDate(post.createdAt)}</p>
+            </div>
+          </div>
+          <p class="text-gray-800 whitespace-pre-line">${post.content}</p>
+        </div>
+      `).join('');
+    }
+
+    async function createPost() {
+      const content = document.getElementById('postContent').value.trim();
+      if (!content) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:8080/api/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ content })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create post');
+        }
+
+        document.getElementById('postContent').value = '';
+        loadPosts();
+      } catch (err) {
+        console.error('Error creating post:', err);
+        alert('Error creating post. Please try again.');
+      }
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return 'Just now';
+      
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    }
+
   </script>
 
 </body>

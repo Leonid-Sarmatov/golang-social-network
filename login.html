@@ -40,10 +40,15 @@
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const email = e.target.email.value;
+      const email = e.target.email.value.trim();
       const password = e.target.password.value;
 
-      // Пример запроса: адаптируй под свой бэкенд
+      // Валидация полей
+      if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+
       try {
         const response = await fetch('http://localhost:8080/api/login', {
           method: 'POST',
@@ -51,13 +56,31 @@
           body: JSON.stringify({ email, password }),
         });
 
-        if (!response.ok) throw new Error('Login failed');
+        // Проверяем статус ответа
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Login failed');
+        }
 
-        const data = await response.json();
-        localStorage.setItem('token', data.token); // Сохраняем JWT
-        window.location.href = '/index.html'; // Переход на главную
+        // Получаем токен из заголовка
+        const authHeader = response.headers.get('Authorization');
+        console.log(response)
+        console.log(authHeader)
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          throw new Error('Invalid authorization header');
+        }
+
+        const token = authHeader.split(' ')[1].trim();
+        if (!token) {
+          throw new Error('Token is missing');
+        }
+
+        // Сохраняем токен в localStorage
+        localStorage.setItem('token', token);
+        // Переход на главную
+        window.location.href = '/index.html'; 
       } catch (err) {
-        alert('Login error. Please check your credentials.');
+        alert(err.message || 'Login failed. Please try again.');
       }
     });
   </script>

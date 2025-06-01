@@ -10,15 +10,15 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-const (
-	uri          = "neo4j://neo4j-sn:7687"
-	databaseName = "neo4j"
-	username     = "neo4j"
-	password     = "bubilda123"
-)
+// const (
+// 	uri          = "neo4j://localhost:7687"//"neo4j://neo4j-sn:7687"
+// 	databaseName = "neo4j"
+// 	username     = "neo4j"
+// 	password     = "bubilda123"
+// )
 
 type Neo4jStorage struct {
-	ctx    context.Context
+	dbName string
 	driver neo4j.DriverWithContext
 }
 
@@ -27,7 +27,7 @@ NewNeo4jStorage конструктор адаптера
 к базе данных
 
 Возвращает:
-  - error: ошибка
+  - Neo4jStorage: структура адаптера
 */
 func NewNeo4jStorage() *Neo4jStorage {
 	return &Neo4jStorage{}
@@ -40,22 +40,25 @@ StartConnect запускает процесс
 Возвращает:
   - error: ошибка
 */
-func (neo *Neo4jStorage) StartConnect() error {
+func (neo *Neo4jStorage) StartConnect(host, port, dbName, username, password string) error {
 	// Создание драйвера с использованием контекста
-	driver, err := neo4j.NewDriverWithContext(uri, neo4j.BasicAuth(username, password, ""))
+	driver, err := neo4j.NewDriverWithContext(
+		fmt.Sprintf("neo4j://%s:%s", host, port), 
+		neo4j.BasicAuth(username, password, ""),
+	)
 	if err != nil {
 		log.Printf("Ошибка создания драйвера: %v", err)
 		return fmt.Errorf("Ошибка создания драйвера: %v", err)
 	}
 
 	neo.driver = driver
+	neo.dbName = dbName
 
 	return nil
 }
 
 /*
-CloseConnect корректно закрывает
-соединения с БД
+CloseConnect корректно закрывает соединения с БД
 
 Возвращает:
   - error: ошибка
@@ -66,39 +69,76 @@ func (neo *Neo4jStorage) CloseConnect() error {
 
 	if err := neo.driver.Close(ctx); err != nil {
 		log.Printf("Ошибка при закрытии драйвера: %v", err)
-		return fmt.Errorf("Ошибка при закрытии драйвера: %v", err)
+		return fmt.Errorf("ошибка при закрытии драйвера: %v", err)
 	}
 
 	return nil
 }
 
+/*
+openWriteSession открывает сессию для записи
+
+Аргументы:
+  - ctx context.Context: контекст
+
+Возвращает:
+  - neo4j.SessionWithContext: интерфейс сессии
+*/
 func (neo *Neo4jStorage) openWriteSession(ctx context.Context) neo4j.SessionWithContext {
 	// Создаем сессию для записи
 	session := neo.driver.NewSession(ctx, neo4j.SessionConfig{
 		AccessMode:   neo4j.AccessModeWrite,
-		DatabaseName: databaseName,
+		DatabaseName: neo.dbName,
 	})
 	return session
 }
 
+/*
+openReadSession открывает сессию для стения
+
+Аргументы:
+  - ctx context.Context: контекст
+
+Возвращает:
+  - neo4j.SessionWithContext: интерфейс сессии
+*/
 func (neo *Neo4jStorage) openReadSession(ctx context.Context) neo4j.SessionWithContext {
 	// Создаем сессию для чтения
 	session := neo.driver.NewSession(ctx, neo4j.SessionConfig{
 		AccessMode:   neo4j.AccessModeRead,
-		DatabaseName: databaseName,
+		DatabaseName: neo.dbName,
 	})
 	return session
 }
 
+/*
+closeSession закрывает сесии на чтение и запись
+
+Аргументы:
+  - ctx context.Context: контекст
+  - session neo4j.SessionWithContext: сессия
+
+Возвращает:
+  - error: ошибка
+*/
 func (neo *Neo4jStorage) closeSession(ctx context.Context, session neo4j.SessionWithContext) error {
 	// Закрываем сессию
 	if err := session.Close(ctx); err != nil {
 		log.Fatalf("Ошибка закрытия сессии: %v", err)
+		return err
 	}
 	return nil
 }
 
-// Добавить пост
+/*
+AddNewUser добавить нового пользователя
+
+Аргументы:
+  - user *core.User: пользователь
+
+Возвращает:
+  - error: ошибка
+*/
 func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 	ctx := context.Background()
 	s := neo.openWriteSession(ctx)
@@ -144,7 +184,15 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 
 // }
 
-// Добавить нового пользователя
+/*
+AddNewUser добавить нового пользователя
+
+Аргументы:
+  - user *core.User: пользователь
+
+Возвращает:
+  - error: ошибка
+*/
 func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
 	ctx := context.Background()
 	s := neo.openWriteSession(ctx)
@@ -182,7 +230,16 @@ func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
 
 // }
 
-// Подписать одного пользователя на другого
+/*
+SubscribeUsers подписывает пользователей
+
+Аргументы:
+  - userName string: пользователь, на которого подписываются
+  - subscriberUserName string: пользователь подписчик
+
+Возвращает:
+  - error: ошибка
+*/
 func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) error {
 	ctx := context.Background()
 	s := neo.openWriteSession(ctx)
@@ -194,9 +251,8 @@ func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) erro
 		}
 	}()
 
-	// Выполнение транзакции для создания поста
+	// Выполнение транзакции для подписки пользователей
 	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		//query := "CREATE (us:User)-[s:SUBSCRIBER]->(u:User) WERE"
 		query := "MATCH (a:User), (b:User) WHERE a.UserName = $username1 AND b.UserName = $username2 CREATE (a)-[:SUBSCRIBER]->(b)"
 		params := map[string]any{
 			"username1": subscriberUserName,
@@ -211,7 +267,8 @@ func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) erro
 		return nil, res.Err()
 	})
 	if err != nil {
-		log.Fatalf("Ошибка транзакции: %v", err)
+		log.Printf("Ошибка транзакции: %v", err)
+		return err
 	}
 
 	return nil

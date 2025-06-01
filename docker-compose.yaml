@@ -48,6 +48,7 @@ services:
     environment:
       - USER_AUTORIZATION_HOST=user-autorization-sn
       - USER_AUTORIZATION_PORT=40001
+      - JWT_SECRET=1234
     ports:
       - "8080:8080"
     networks:

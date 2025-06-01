@@ -7,7 +7,8 @@ import (
 	//"time"
 	"log"
 	"time"
-	idgen "user_follow/internal/adapters/id_gen"
+	"os"
+	"user_follow/internal/adapters/id_gen"
 	"user_follow/internal/adapters/storage"
 	"user_follow/internal/core"
 	//"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -16,10 +17,15 @@ import (
 func main() {
 
 	time.Sleep(5 * time.Second)
-	return
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
 
 	db := storage.NewNeo4jStorage()
-	db.StartConnect()
+	db.StartConnect(dbHost, dbPort, dbName, dbUser, dbPassword)
 	defer db.CloseConnect()
 
 	p := &core.Post{

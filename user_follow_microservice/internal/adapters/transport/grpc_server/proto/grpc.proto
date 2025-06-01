@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package generated;
+
+option go_package = "user_follow_microservice/internal/transport/grpc_server/generated";
+
+service UserFollow {
+    // Создание нового пользователя
+    rpc AddNewUser (AddNewUserRequest) returns (AddNewUserResponse);
+
+    // Создание нового поста
+    rpc AddNewPost (AddNewPostRequest) returns (AddNewPostResponse);
+
+    // Получить созданные пользователем посты
+    //rpc GetPostsAddedByUser (GetPostsAddedByUserRequest) returns (GetPostsAddedByUserResponse);
+
+    // Получить посты от подписок пользователя
+    //rpc GetPostsIntendedForTheUser (GetPostsIntendedForTheUserRequest) returns (GetPostsIntendedForTheUserResponse);
+
+    // Подписать одного пользователя на другого
+    rpc SubscribeUsers (SubscribeUsersRequest) returns (SubscribeUsersResponse);
+
+    // Получить количество подписок и подписчиков пользователя
+    rpc GetNumSubscribersAndSubscriptions (GetSubscribersAndSubscriptionsRequest) returns (GetSubscribersAndSubscriptionsResponse);
+}
+
+// Создание нового пользователя
+
+message AddNewUserRequest {
+    string user_name = 1;
+}
+
+message AddNewUserResponse {
+    string user_id = 1;
+}
+
+// Создание нового поста
+
+message AddNewPostRequest {
+    string autor_user_name = 1;
+    string color = 2;
+}
+
+message AddNewPostResponse {
+    string post_id = 1;
+}
+
+// Получить созданные пользователем посты
+
+message GetPostsAddedByUserRequest {
+    string userName = 1;
+}
+
+message GetPostsAddedByUserResponse {
+    repeated Post posts = 1;
+}
+
+message Post {
+    string id = 1;
+    string autor_user_name = 2;
+    int64 time_of_create = 3;
+    string color = 4;
+    option repeated string liked_the_post = 5;
+}
+
+// Подписать одного пользователя на другого
+
+message SubscribeUsersRequest {
+    string userName = 1;
+    string subscriberUserName = 2;
+}
+
+message SubscribeUsersResponse {
+    string result_message = 1;
+}
+
+// Получить количество подписок и подписчиков пользователя
+
+message GetSubscribersAndSubscriptionsRequest {
+    string userName = 1;
+}
+
+message GetSubscribersAndSubscriptionsResponse {
+    int64 subscribers = 1;
+    int64 subscriptions = 2;
+}

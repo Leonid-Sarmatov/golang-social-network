@@ -44,6 +44,7 @@ func NewLoginHandler(lu LoginUser) gin.HandlerFunc {
 			return
 		}
 
+		ctx.Header("Access-Control-Expose-Headers", "Authorization")
 		ctx.Header("Authorization", "Bearer "+tokenString)
 		ctx.JSON(http.StatusOK, &messages.BaseResponse{
 			Status: "OK",
