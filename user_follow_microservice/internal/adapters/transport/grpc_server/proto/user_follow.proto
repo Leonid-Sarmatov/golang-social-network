@@ -12,7 +12,7 @@ service UserFollow {
     rpc AddNewPost (AddNewPostRequest) returns (AddNewPostResponse);
 
     // Получить созданные пользователем посты
-    //rpc GetPostsAddedByUser (GetPostsAddedByUserRequest) returns (GetPostsAddedByUserResponse);
+    rpc GetPostsAddedByUser (GetPostsAddedByUserRequest) returns (GetPostsAddedByUserResponse);
 
     // Получить посты от подписок пользователя
     //rpc GetPostsIntendedForTheUser (GetPostsIntendedForTheUserRequest) returns (GetPostsIntendedForTheUserResponse);
@@ -31,7 +31,7 @@ message AddNewUserRequest {
 }
 
 message AddNewUserResponse {
-    string user_id = 1;
+    string result_message = 1;
 }
 
 // Создание нового поста
@@ -42,7 +42,7 @@ message AddNewPostRequest {
 }
 
 message AddNewPostResponse {
-    string post_id = 1;
+    string result_message = 1;
 }
 
 // Получить созданные пользователем посты
@@ -60,7 +60,7 @@ message Post {
     string autor_user_name = 2;
     int64 time_of_create = 3;
     string color = 4;
-    option repeated string liked_the_post = 5;
+    repeated string liked_the_post = 5;
 }
 
 // Подписать одного пользователя на другого

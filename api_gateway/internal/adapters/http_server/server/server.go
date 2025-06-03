@@ -2,11 +2,12 @@ package server
 
 import (
 	"api_gateway/internal/adapters/http_server/handlers/login"
+	"api_gateway/internal/adapters/http_server/handlers/posts"
 	"api_gateway/internal/adapters/http_server/handlers/register"
+	"log"
 	"net/http"
 	"strings"
 	"time"
-	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,15 +21,17 @@ type tockenCheker interface {
 type server struct {
 	login.LoginUser
 	register.RegisterUser
+	posts.PostsInterface
 	tockenCheker
 }
 
 /* Конструктор */
-func NewServer(lu login.LoginUser, ru register.RegisterUser, tch tockenCheker) *server {
+func NewServer(lu login.LoginUser, ru register.RegisterUser, tch tockenCheker, pts posts.PostsInterface) *server {
 	return &server{
 		LoginUser: lu,
 		RegisterUser: ru,
 		tockenCheker: tch,
+		PostsInterface: pts,
 	}
 }
 
@@ -53,10 +56,11 @@ func (s *server) Init() {
 	/* --- Вызовы перенапрявляемые микросервису социального графа --- */
 
 	// Создать пост
-	authorized.POST("/api/posts/create")
+	authorized.POST("/api/posts/create", posts.NewAddNewPostHandler(s.PostsInterface))
 	// Получить посты
-	authorized.POST("/api/posts/create")
-	/* Вызовы перенапрявляемые микросервису контента */
+	authorized.POST("/api/posts/getByUserName", posts.NewGetPostsAddedByUserHandler(s.PostsInterface))
+
+	/* -------- Вызовы перенапрявляемые микросервису контента ------- */
 	//r.GET("/", nil)
 
 	// Настройка HTTP-сервера с таймаутами

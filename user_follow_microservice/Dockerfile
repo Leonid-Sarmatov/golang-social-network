@@ -7,4 +7,5 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd/main.go
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/app . 
+EXPOSE 40001
 ENTRYPOINT ["./app"]

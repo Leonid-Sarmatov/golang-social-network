@@ -48,6 +48,8 @@ services:
     environment:
       - USER_AUTORIZATION_HOST=user-autorization-sn
       - USER_AUTORIZATION_PORT=40001
+      - USER_FOLLOW_HOST=user-follow-sn
+      - USER_FOLLOW_PORT=40001
       - JWT_SECRET=1234
     ports:
       - "8080:8080"
@@ -73,6 +75,12 @@ services:
   user_follow:
     image: user-follow-sn:latest
     container_name: user-follow-sn
+    environment:
+      - DB_HOST=neo4j-sn
+      - DB_PORT=7687
+      - DB_NAME=neo4j
+      - DB_USER=neo4j
+      - DB_PASSWORD=bubilda123
     ports:
       - "40001:40001"
     networks:

@@ -43,13 +43,15 @@ StartConnect запускает процесс
 func (neo *Neo4jStorage) StartConnect(host, port, dbName, username, password string) error {
 	// Создание драйвера с использованием контекста
 	driver, err := neo4j.NewDriverWithContext(
-		fmt.Sprintf("neo4j://%s:%s", host, port), 
+		fmt.Sprintf("neo4j://%s:%s", host, port),
 		neo4j.BasicAuth(username, password, ""),
 	)
+
 	if err != nil {
 		log.Printf("Ошибка создания драйвера: %v", err)
-		return fmt.Errorf("Ошибка создания драйвера: %v", err)
+		return fmt.Errorf("ошибка создания драйвера: %v", err)
 	}
+	log.Printf("Драйвер БД успешно создан и подключен")
 
 	neo.driver = driver
 	neo.dbName = dbName
@@ -124,17 +126,17 @@ closeSession закрывает сесии на чтение и запись
 func (neo *Neo4jStorage) closeSession(ctx context.Context, session neo4j.SessionWithContext) error {
 	// Закрываем сессию
 	if err := session.Close(ctx); err != nil {
-		log.Fatalf("Ошибка закрытия сессии: %v", err)
-		return err
+		log.Printf("Ошибка закрытия сессии: %v", err)
+		return fmt.Errorf("ошибка закрытия сессии: %v", err)
 	}
 	return nil
 }
 
 /*
-AddNewUser добавить нового пользователя
+AddNewPost добавить новый пост
 
 Аргументы:
-  - user *core.User: пользователь
+  - post *core.Post: пользователь
 
 Возвращает:
   - error: ошибка
@@ -152,7 +154,11 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 
 	// Выполнение транзакции для создания поста
 	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := "CREATE (p:Post {ID: $id, AutorUserName: $name, TimeOfCreate: $time, Color: $color})"
+		query := `
+            MATCH (u:User {UserName: $name})
+            CREATE (p:Post {ID: $id, AutorUserName: $name, TimeOfCreate: $time, Color: $color})
+            CREATE (u)-[:PUBLISHER]->(p)
+            RETURN p`
 		params := map[string]any{
 			"id":    post.ID,
 			"name":  post.AutorUserName,
@@ -168,21 +174,23 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 		return nil, res.Err()
 	})
 	if err != nil {
-		log.Fatalf("Ошибка транзакции: %v", err)
+		log.Printf("Ошибка транзакции: %v", err)
+		return fmt.Errorf("ошибка транзакции: %v", err)
 	}
+	log.Printf("Узел поста в БД успешно создан, пользователь = %v, цвет = %v", post.AutorUserName, post.Color)
 
 	return nil
 }
 
 // Поставить посту лайк
-// func (neo *Neo4jStorage)SetPostLike(postID []byte, likedUser string) error {
-
-// }
+func (neo *Neo4jStorage) SetPostLike(postID []byte, likedUser string) error {
+	return nil
+}
 
 // Получить количество лайков поста
-// func (neo *Neo4jStorage)GetPostLikes(postID []byte) (int, error) {
-
-// }
+func (neo *Neo4jStorage) GetPostLikes(postID []byte) (int, error) {
+	return -1, nil
+}
 
 /*
 AddNewUser добавить нового пользователя
@@ -193,7 +201,7 @@ AddNewUser добавить нового пользователя
 Возвращает:
   - error: ошибка
 */
-func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
+func (neo *Neo4jStorage) AddNewUser(user *core.User) error {
 	ctx := context.Background()
 	s := neo.openWriteSession(ctx)
 
@@ -208,7 +216,7 @@ func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
 	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := "CREATE (u:User {UserName: $name})"
 		params := map[string]any{
-			"name":  user.UserName,
+			"name": user.UserName,
 		}
 
 		res, err := tx.Run(ctx, query, params)
@@ -220,15 +228,16 @@ func (neo *Neo4jStorage)AddNewUser(user *core.User) error {
 	})
 	if err != nil {
 		log.Fatalf("Ошибка транзакции: %v", err)
+		return fmt.Errorf("ошибка транзакции: %v", err)
 	}
 
 	return nil
 }
 
 // Проверить, существует ли такое имя пользователя в системе или нет
-// func (neo *Neo4jStorage)CheckExistsUserName(userName string) (bool, error) {
-
-// }
+func (neo *Neo4jStorage) CheckExistsUserName(userName string) (bool, error) {
+	return false, nil
+}
 
 /*
 SubscribeUsers подписывает пользователей
@@ -240,7 +249,7 @@ SubscribeUsers подписывает пользователей
 Возвращает:
   - error: ошибка
 */
-func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) error {
+func (neo *Neo4jStorage) SubscribeUsers(userName, subscriberUserName string) error {
 	ctx := context.Background()
 	s := neo.openWriteSession(ctx)
 
@@ -268,10 +277,63 @@ func (neo *Neo4jStorage)SubscribeUsers(userName, subscriberUserName string) erro
 	})
 	if err != nil {
 		log.Printf("Ошибка транзакции: %v", err)
-		return err
+		return fmt.Errorf("ошибка транзакции: %v", err)
 	}
 
 	return nil
+}
+
+/*
+GetUserPosts получить все посты пользователя
+
+Аргументы:
+  - username string: имя пользователя
+
+Возвращает:
+  - []*core.Post: список постов
+  - error: ошибка
+*/
+func (neo *Neo4jStorage) GetPostsAddedByUser(username string) ([]*core.Post, error) {
+	ctx := context.Background()
+	s := neo.openReadSession(ctx)
+
+	defer func() {
+		err := neo.closeSession(ctx, s)
+		if err != nil {
+			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+		}
+	}()
+
+	result, err := s.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+            MATCH (u:User {Username: $username})-[:PUBLISHER]->(p:Post)
+            RETURN p.ID as id, p.AutorUserName as author, p.TimeOfCreate as time, p.Color as color
+            ORDER BY p.TimeOfCreate DESC`
+
+		cursor, err := tx.Run(ctx, query, map[string]any{"username": username})
+		if err != nil {
+			return nil, err
+		}
+
+		var posts []*core.Post
+		for cursor.Next(ctx) {
+			record := cursor.Record()
+			posts = append(posts, &core.Post{
+				ID:            record.Values[0].([]byte),
+				AutorUserName: record.Values[1].(string),
+				TimeOfCreate:  record.Values[2].(int64),
+				Color:         record.Values[3].(string),
+			})
+		}
+
+		return posts, cursor.Err()
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user posts: %w", err)
+	}
+
+	return result.([]*core.Post), nil
 }
 
 /*

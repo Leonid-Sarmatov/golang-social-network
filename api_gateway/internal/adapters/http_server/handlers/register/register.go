@@ -21,7 +21,11 @@ type RegisterUser interface {
 	RegisterUser(userName, userEmail, password string) error
 }
 
-func NewLoginHandler(ru RegisterUser) gin.HandlerFunc {
+type UsersInterface interface {
+	AddNewUser(userName string) (string, error)
+}
+
+func NewLoginHandler(ru RegisterUser, ui UsersInterface) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := &request{}
 
@@ -44,6 +48,17 @@ func NewLoginHandler(ru RegisterUser) gin.HandlerFunc {
 			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
 				Status:       "Error",
 				ErrorMessage: errString,
+			})
+			return
+		}
+
+		res, err := ui.AddNewUser(req.UserName)
+		if err != nil {
+			errString := fmt.Sprintf("Ошибка сервера, не удалось добавить узел пользователя с социальный граф: %s", err.Error())
+			log.Println(errString)
+			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
+				Status:       "Error",
+				ErrorMessage: errString+res,
 			})
 			return
 		}

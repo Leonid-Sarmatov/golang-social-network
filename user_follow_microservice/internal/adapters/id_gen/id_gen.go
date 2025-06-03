@@ -31,9 +31,27 @@ GenAndSetIDForPost сериализует пост в байтовое пред�
 func (idg *IDGenerator) GenAndSetIDForPost(post *core.Post) error {
 	postBytes, err := serializePost(post)
 	if err != nil {
-		return fmt.Errorf("Can not serialize this post: %v", err)
+		return fmt.Errorf("can not serialize this post: %v", err)
 	}
 	post.ID = idg.getHash(postBytes)
+	return nil
+}
+
+/*
+GenAndSetIDForPost сериализует пост в байтовое представление
+
+Аргументы:
+  - post *core.Post: указатель на пост для которого генерируется ID
+
+Возвращает:
+  - error: ошибка
+*/
+func (idg *IDGenerator) GenAndSetIDForUser(user *core.User) error {
+	postBytes, err := serializeUser(user)
+	if err != nil {
+		return fmt.Errorf("can not serialize this user: %v", err)
+	}
+	user.ID = idg.getHash(postBytes)
 	return nil
 }
 

@@ -47,6 +47,14 @@
       <!-- Форма создания поста -->
       <div class="bg-white p-4 rounded-lg shadow mb-6">
         <textarea id="postContent" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-3" placeholder="What's on your mind?"></textarea>
+        
+        <!-- Выбор цвета -->
+        <select id="colorSelect" class="border border-gray-300 rounded-lg p-2 mb-3 w-full">
+          <option value="green">Green</option>
+          <option value="blue">Blue</option>
+          <option value="purple">Purple</option>
+        </select>
+
         <div class="flex justify-end">
           <button id="createPostBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition">
             Post
@@ -175,47 +183,88 @@
       });
     }
 
-    function renderPosts(posts) {
-      const container = document.getElementById('postsContainer');
-      
-      if (!posts || posts.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-8 text-gray-500">
-            No posts yet. Be the first to post!
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = posts.map(post => `
-        <div class="post bg-white p-4 rounded-lg shadow">
-          <div class="flex items-start space-x-3 mb-2">
-            <div class="bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center">
-              <span class="text-gray-600">${post.author ? post.author.charAt(0).toUpperCase() : 'U'}</span>
-            </div>
-            <div class="flex-1">
-              <h3 class="font-medium">${post.author || 'Unknown user'}</h3>
-              <p class="text-xs text-gray-500">${formatDate(post.createdAt)}</p>
-            </div>
-          </div>
-          <p class="text-gray-800 whitespace-pre-line">${post.content}</p>
-        </div>
-      `).join('');
-    }
-
-    async function createPost() {
-      const content = document.getElementById('postContent').value.trim();
-      if (!content) return;
-
+    async function loadPosts() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:8080/api/posts', {
+        const timeTo = Math.floor(Date.now() / 1000);
+        const timeFrom = now - 7 * 24 * 60 * 60;
+
+        const response = await fetch('http://localhost:8080/api/posts/getByUserName', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ content })
+          body: JSON.stringify({ 
+            time_from: timeFrom.toISOString(),
+            time_to: timeTo.toISOString()
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load posts');
+        }
+
+        const posts = await response.json();
+        renderPosts(posts);
+      } catch (err) {
+        console.error('Error loading posts:', err);
+        document.getElementById('postsContainer').innerHTML = `
+          <div class="text-center py-8 text-red-500">
+            Error loading posts. Please try again.
+          </div>
+        `;
+      }
+    }
+
+    // Рендеринг ответа от сервера для отображения постов на странице
+    function renderPosts(posts) {
+      const container = document.getElementById('postsContainer');
+      
+      if (!posts || posts.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-gray-500">No posts yet. Be the first to post!</div>`;
+        return;
+      }
+
+      container.innerHTML = posts.map(post => {
+        const colorClass = {
+          green: 'border-green-500',
+          blue: 'border-blue-500',
+          purple: 'border-purple-500'
+        }[post.color] || 'border-gray-300';
+
+        return `
+          <div class="post bg-white p-4 rounded-lg shadow border-l-4 ${colorClass}">
+            <div class="flex items-start space-x-3 mb-2">
+              <div class="bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center">
+                <span class="text-gray-600">${post.author ? post.author.charAt(0).toUpperCase() : 'U'}</span>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-medium">${post.author || 'Unknown user'}</h3>
+                <p class="text-xs text-gray-500">${formatDate(post.createdAt)}</p>
+              </div>
+            </div>
+            <p class="text-gray-800 whitespace-pre-line">${post.content}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Отправка запроса на создание поста
+    async function createPost() {
+      const content = document.getElementById('postContent').value.trim();
+      const color = document.getElementById('colorSelect').value;
+      if (!content || !color) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:8080/api/posts/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ content, color })
         });
 
         if (!response.ok) {
@@ -224,6 +273,7 @@
 
         document.getElementById('postContent').value = '';
         loadPosts();
+        console.log('OK');
       } catch (err) {
         console.error('Error creating post:', err);
         alert('Error creating post. Please try again.');

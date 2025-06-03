@@ -113,3 +113,71 @@ func (core *Core) AddNewUser(userName string) error {
 	}
 	return nil
 }
+
+/*
+AddNewPost добавляет новый пост
+
+Аргументы:
+  - userName string: Имя пользователя
+  - color string: Цвет поста
+
+Возвращает:
+  - error: ошибка
+*/
+func (c *Core) AddNewPost(userName, color string) error {
+	p := Post{
+		AutorUserName: userName,
+		TimeOfCreate: time.Now().Unix(),
+		Color: color,
+		LikedThePost: make([]string, 0),
+	}
+
+	err := c.IdGenerator.GenAndSetIDForPost(&p)
+	if err != nil {
+		return errors.Join(ErrCreateResource, fmt.Errorf("не удалось задать ID при создании поста: %v", err))
+	}
+
+	err = c.PostStorage.AddNewPost(&p)
+	if err != nil {
+		return errors.Join(ErrWriteData, fmt.Errorf("не удалось сохранить новый пост: %v", err))
+	}
+
+	return nil
+}
+
+/*
+GetPostsAddedByUser прочитывает посты определенного пользователя
+
+Аргументы:
+  - userName string: Имя пользователя
+  - color string: Цвет поста
+
+Возвращает:
+  - error: ошибка
+*/
+func (c *Core) GetPostsAddedByUser(userName string) ([]*Post, error) {
+	posts, err := c.PostStorage.GetPostsAddedByUser(userName)
+	if err != nil {
+		return nil, errors.Join(ErrReadData, fmt.Errorf("невозможно прочитать посты созданные пользователем %v: %v", userName, err))
+	}
+	return posts, nil
+}
+
+func (c *Core) SetPostLike(postID []byte, likedUser string) error {
+	return nil
+}
+
+func (c *Core) GetPostLikes(postID []byte) (int, error) {
+	return -1, nil
+}
+
+// type coreInterface interface {
+// 	// Добавить пост
+// 	AddNewPost(userName, color string) error
+// 	// Прлучить посты, добавленные определенным пользователем
+// 	GetPostsAddedByUser(userName string) ([]*Post, error)
+// 	// Поставить посту лайк
+// 	SetPostLike(postID []byte, likedUser string) error
+// 	// Получить количество лайков поста
+// 	GetPostLikes(postID []byte) (int, error)
+// }
