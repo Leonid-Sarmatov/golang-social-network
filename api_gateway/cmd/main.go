@@ -22,12 +22,12 @@ func main() {
 	cli := userauthorization.NewUserAuthorizationClient(host, port)
 	cli.Start()
 
-	tockenCheker := token.NewTokenJWTAdapter(jwtSecret)
-
 	cli2 := userfollow.NewUserAuthorizationClient(host2, port2)
 	cli2.Start()
 
-	srv := server.NewServer(cli, cli, tockenCheker, cli2)
+	tockenCheker := token.NewTokenJWTAdapter(jwtSecret)
+
+	srv := server.NewServer(tockenCheker, *cli, *cli2)
 	srv.Init()
 
 	for {

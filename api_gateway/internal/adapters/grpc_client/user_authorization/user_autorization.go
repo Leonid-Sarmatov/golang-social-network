@@ -9,21 +9,21 @@ import (
 	. "api_gateway/internal/adapters/grpc_client/user_authorization/generated"
 )
 
-type userAuthorizationClient struct {
+type UserAuthorizationGRPC struct {
 	ip string
 	port string
 	connection *grpc.ClientConn
 	UserAutorizationClient
 }
 
-func NewUserAuthorizationClient(ip, port string) *userAuthorizationClient {
-	return &userAuthorizationClient{
+func NewUserAuthorizationClient(ip, port string) *UserAuthorizationGRPC {
+	return &UserAuthorizationGRPC{
 		ip: ip,
 		port: port,
 	}
 }
 
-func (c *userAuthorizationClient) Start() error {
+func (c *UserAuthorizationGRPC) Start() error {
 	// Устанавливаем соединение с сервером
 	conn, err := grpc.Dial(c.ip+":"+c.port, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -36,7 +36,7 @@ func (c *userAuthorizationClient) Start() error {
 	return nil
 }
 
-func (c *userAuthorizationClient) LoginUser(userEmail, password string) (string, error) {
+func (c *UserAuthorizationGRPC) LoginUser(userEmail, password string) (string, error) {
 	res, err := c.LoginUserAndGetToken(context.Background(), &LoginUserAndGetTokenRequest{
 		UserEmail: userEmail,
 		Password: password,
@@ -47,7 +47,7 @@ func (c *userAuthorizationClient) LoginUser(userEmail, password string) (string,
 	return res.Token, nil
 }
 
-func (c *userAuthorizationClient) RegisterUser(userName, userEmail, password string) error {
+func (c *UserAuthorizationGRPC) RegisterUser(userName, userEmail, password string) error {
 	_, err := c.RegisterNewUser(context.Background(), &RegisterNewUserRequest{
 		UserName: userName,
 		UserEmail: userEmail,

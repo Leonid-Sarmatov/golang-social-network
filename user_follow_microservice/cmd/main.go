@@ -5,7 +5,7 @@ import (
 	//"fmt"
 	//"log" // authorization
 	//"time"
-	"log"
+	//"log"
 	"os"
 	"time"
 	"user_follow/internal/adapters/id_gen"
@@ -29,10 +29,10 @@ func main() {
 	db.StartConnect(dbHost, dbPort, dbName, dbUser, dbPassword)
 	defer db.CloseConnect()
 
-	user1 := &core.User{
-		UserName: "bubilda",
-	}
-	log.Printf("Сообщение: %v", db.AddNewUser(user1))
+	// user1 := &core.User{
+	// 	UserName: "bubilda",
+	// }
+	// log.Printf("Сообщение: %v", db.AddNewUser(user1))
 
 	idg := idgen.NewIDGenerator()
 

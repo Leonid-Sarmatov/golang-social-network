@@ -10,25 +10,25 @@ import (
 	. "api_gateway/internal/adapters/grpc_client/user_follow/generated"
 )
 
-type userFollowClient struct {
+type UserFollowGRPC struct {
 	ip string
 	port string
 	connection *grpc.ClientConn
 	userFollowClient UserFollowClient
 }
 
-func NewUserAuthorizationClient(ip, port string) *userFollowClient {
-	return &userFollowClient{
+func NewUserAuthorizationClient(ip, port string) *UserFollowGRPC {
+	return &UserFollowGRPC{
 		ip: ip,
 		port: port,
 	}
 }
 
-func (c *userFollowClient) Start() error {
+func (c *UserFollowGRPC) Start() error {
 	// Устанавливаем соединение с сервером
 	conn, err := grpc.Dial(c.ip+":"+c.port, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Failed to connect to server: %v", err)
+		log.Printf("Failed to connect to server: %v", err)
 		return err
 	}
 	c.connection = conn
@@ -37,40 +37,40 @@ func (c *userFollowClient) Start() error {
 	return nil
 }
 
-func (c *userFollowClient) AddNewUser(userName string) (string, error) {
+func (c *UserFollowGRPC) AddNewUser(userName string) (string, error) {
 	res, err := c.userFollowClient.AddNewUser(context.Background(), &AddNewUserRequest{
 		UserName: userName,
 	})
 	if err != nil {
-		log.Fatalf("Failed to AddNewUser: %v", err)
+		log.Printf("Failed to AddNewUser: %v", err)
 		return "", err
 	}
-	log.Fatalf("Successfull AddNewUser")
+	log.Printf("Successfull AddNewUser")
 	return res.ResultMessage, nil
 }
 
-func (c *userFollowClient) AddNewPost(userName, color string) (string, error) {
+func (c *UserFollowGRPC) AddNewPost(userName, color string) (string, error) {
 	res, err := c.userFollowClient.AddNewPost(context.Background(), &AddNewPostRequest{
 		AutorUserName: userName,
 		Color: color,
 	})
 	if err != nil {
-		log.Fatalf("Failed to AddNewPost: %v", err)
+		log.Printf("Failed to AddNewPost: %v", err)
 		return "", err
 	}
-	log.Fatalf("Successfull AddNewPost")
+	log.Printf("Successfull AddNewPost")
 	return res.ResultMessage, nil
 }
 
-func (c *userFollowClient) GetPostsAddedByUser(userName string) ([]*Post, error) {
+func (c *UserFollowGRPC) GetPostsAddedByUser(userName string) ([]*Post, error) {
 	res, err := c.userFollowClient.GetPostsAddedByUser(context.Background(), &GetPostsAddedByUserRequest{
 		UserName: userName,
 	})
 	if err != nil {
-		log.Fatalf("Failed to GetPostsAddedByUser: %v", err)
+		log.Printf("Failed to GetPostsAddedByUser: %v", err)
 		return nil, err
 	}
-	log.Fatalf("Successfull GetPostsAddedByUser")
+	log.Printf("Successfull GetPostsAddedByUser")
 	return res.Posts, nil
 }
 

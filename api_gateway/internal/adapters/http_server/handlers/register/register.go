@@ -25,7 +25,7 @@ type UsersInterface interface {
 	AddNewUser(userName string) (string, error)
 }
 
-func NewLoginHandler(ru RegisterUser, ui UsersInterface) gin.HandlerFunc {
+func NewRegisterHandler(ru RegisterUser, ui UsersInterface) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := &request{}
 

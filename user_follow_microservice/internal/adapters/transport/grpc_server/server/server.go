@@ -14,6 +14,8 @@ import (
 type coreInterface interface {
 	// Добавить пост
 	AddNewPost(userName, color string) error
+	// Добавить пользователя
+	AddNewUser(userName string) error
 	// Прлучить посты, добавленные определенным пользователем
 	GetPostsAddedByUser(userName string) ([]*core.Post, error)
 	// Поставить посту лайк
@@ -61,7 +63,12 @@ func (s *server) Start() error {
 
 // Создание нового пользователя
 func (s *server)AddNewUser(ctx context.Context, req *AddNewUserRequest) (*AddNewUserResponse, error) {
-	return nil, nil
+	log.Printf("<user_follow core.go AddNewUser> name = %v", req.UserName)
+	err := s.core.AddNewUser(req.UserName)
+	if err != nil {
+		return &AddNewUserResponse{ ResultMessage: "ERROR" }, fmt.Errorf("не удалось создать пользователя: %v", err)
+	}
+	return &AddNewUserResponse{ ResultMessage: "OK" }, nil
 }
 
 // Создание нового поста
@@ -69,7 +76,7 @@ func (s *server)AddNewPost(ctx context.Context, req *AddNewPostRequest) (*AddNew
 	log.Printf("<user_follow core.go AddNewPost> name = %v, color = %v", req.AutorUserName, req.Color)
 	err := s.core.AddNewPost(req.AutorUserName, req.Color)
 	if err != nil {
-		return &AddNewPostResponse{ ResultMessage: "ERROR" }, fmt.Errorf("не удалось создать ID для поста: %v", err)
+		return &AddNewPostResponse{ ResultMessage: "ERROR" }, fmt.Errorf("не удалось создать пост: %v", err)
 	}
 	return &AddNewPostResponse{ ResultMessage: "OK" }, nil
 }

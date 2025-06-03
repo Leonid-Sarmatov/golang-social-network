@@ -1,6 +1,8 @@
 package server
 
 import (
+	"api_gateway/internal/adapters/grpc_client/user_authorization"
+	"api_gateway/internal/adapters/grpc_client/user_follow"
 	"api_gateway/internal/adapters/http_server/handlers/login"
 	"api_gateway/internal/adapters/http_server/handlers/posts"
 	"api_gateway/internal/adapters/http_server/handlers/register"
@@ -19,19 +21,17 @@ type tockenCheker interface {
 
 /* HTTP-сервер для внешнего API */
 type server struct {
-	login.LoginUser
-	register.RegisterUser
-	posts.PostsInterface
+	userauthorization.UserAuthorizationGRPC
+    userfollow.UserFollowGRPC
 	tockenCheker
 }
 
 /* Конструктор */
-func NewServer(lu login.LoginUser, ru register.RegisterUser, tch tockenCheker, pts posts.PostsInterface) *server {
+func NewServer(tch tockenCheker, uagrpc userauthorization.UserAuthorizationGRPC, ufgrpc userfollow.UserFollowGRPC) *server {
 	return &server{
-		LoginUser: lu,
-		RegisterUser: ru,
 		tockenCheker: tch,
-		PostsInterface: pts,
+		UserAuthorizationGRPC: uagrpc,
+		UserFollowGRPC: ufgrpc,
 	}
 }
 
@@ -49,16 +49,16 @@ func (s *server) Init() {
 	/* ------ Вызовы перенапрявляемые микросервису авторизации ------ */
 
 	// Аутентификация
-	r.POST("/api/login", login.NewLoginHandler(s.LoginUser))
+	r.POST("/api/login", login.NewLoginHandler(&s.UserAuthorizationGRPC))
 	// Регистрация
-	r.POST("/api/register", register.NewLoginHandler(s.RegisterUser))
+	r.POST("/api/register", register.NewRegisterHandler(&s.UserAuthorizationGRPC, &s.UserFollowGRPC))
 
 	/* --- Вызовы перенапрявляемые микросервису социального графа --- */
 
 	// Создать пост
-	authorized.POST("/api/posts/create", posts.NewAddNewPostHandler(s.PostsInterface))
+	authorized.POST("/api/posts/create", posts.NewAddNewPostHandler(&s.UserFollowGRPC))
 	// Получить посты
-	authorized.POST("/api/posts/getByUserName", posts.NewGetPostsAddedByUserHandler(s.PostsInterface))
+	authorized.POST("/api/posts/getByUserName", posts.NewGetPostsAddedByUserHandler(&s.UserFollowGRPC))
 
 	/* -------- Вызовы перенапрявляемые микросервису контента ------- */
 	//r.GET("/", nil)
