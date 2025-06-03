@@ -27,12 +27,12 @@ func (c *UserAuthorizationGRPC) Start() error {
 	// Устанавливаем соединение с сервером
 	conn, err := grpc.Dial(c.ip+":"+c.port, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Failed to connect to server: %v", err)
+		log.Printf("Failed to connect to server: %v", err)
 		return err
 	}
 	c.connection = conn
 	c.UserAutorizationClient = NewUserAutorizationClient(conn)
-	log.Println("Connection: userAuthorizationClient - OK!")
+	log.Printf("Connection: userAuthorizationClient - OK!")
 	return nil
 }
 
