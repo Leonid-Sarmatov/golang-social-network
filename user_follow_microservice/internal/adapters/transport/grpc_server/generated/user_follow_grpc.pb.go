@@ -22,7 +22,9 @@ const (
 	UserFollow_AddNewUser_FullMethodName                        = "/generated.UserFollow/AddNewUser"
 	UserFollow_AddNewPost_FullMethodName                        = "/generated.UserFollow/AddNewPost"
 	UserFollow_GetPostsAddedByUser_FullMethodName               = "/generated.UserFollow/GetPostsAddedByUser"
+	UserFollow_GetPostsIntendedForTheUser_FullMethodName        = "/generated.UserFollow/GetPostsIntendedForTheUser"
 	UserFollow_SubscribeUsers_FullMethodName                    = "/generated.UserFollow/SubscribeUsers"
+	UserFollow_GetAllUsers_FullMethodName                       = "/generated.UserFollow/GetAllUsers"
 	UserFollow_GetNumSubscribersAndSubscriptions_FullMethodName = "/generated.UserFollow/GetNumSubscribersAndSubscriptions"
 )
 
@@ -36,8 +38,12 @@ type UserFollowClient interface {
 	AddNewPost(ctx context.Context, in *AddNewPostRequest, opts ...grpc.CallOption) (*AddNewPostResponse, error)
 	// Получить созданные пользователем посты
 	GetPostsAddedByUser(ctx context.Context, in *GetPostsAddedByUserRequest, opts ...grpc.CallOption) (*GetPostsAddedByUserResponse, error)
+	// Получить посты от подписок пользователя
+	GetPostsIntendedForTheUser(ctx context.Context, in *GetPostsIntendedForTheUserRequest, opts ...grpc.CallOption) (*GetPostsIntendedForTheUserResponse, error)
 	// Подписать одного пользователя на другого
 	SubscribeUsers(ctx context.Context, in *SubscribeUsersRequest, opts ...grpc.CallOption) (*SubscribeUsersResponse, error)
+	// Получить всех пользователей
+	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
 	// Получить количество подписок и подписчиков пользователя
 	GetNumSubscribersAndSubscriptions(ctx context.Context, in *GetSubscribersAndSubscriptionsRequest, opts ...grpc.CallOption) (*GetSubscribersAndSubscriptionsResponse, error)
 }
@@ -80,10 +86,30 @@ func (c *userFollowClient) GetPostsAddedByUser(ctx context.Context, in *GetPosts
 	return out, nil
 }
 
+func (c *userFollowClient) GetPostsIntendedForTheUser(ctx context.Context, in *GetPostsIntendedForTheUserRequest, opts ...grpc.CallOption) (*GetPostsIntendedForTheUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPostsIntendedForTheUserResponse)
+	err := c.cc.Invoke(ctx, UserFollow_GetPostsIntendedForTheUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userFollowClient) SubscribeUsers(ctx context.Context, in *SubscribeUsersRequest, opts ...grpc.CallOption) (*SubscribeUsersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SubscribeUsersResponse)
 	err := c.cc.Invoke(ctx, UserFollow_SubscribeUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userFollowClient) GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAllUsersResponse)
+	err := c.cc.Invoke(ctx, UserFollow_GetAllUsers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +136,12 @@ type UserFollowServer interface {
 	AddNewPost(context.Context, *AddNewPostRequest) (*AddNewPostResponse, error)
 	// Получить созданные пользователем посты
 	GetPostsAddedByUser(context.Context, *GetPostsAddedByUserRequest) (*GetPostsAddedByUserResponse, error)
+	// Получить посты от подписок пользователя
+	GetPostsIntendedForTheUser(context.Context, *GetPostsIntendedForTheUserRequest) (*GetPostsIntendedForTheUserResponse, error)
 	// Подписать одного пользователя на другого
 	SubscribeUsers(context.Context, *SubscribeUsersRequest) (*SubscribeUsersResponse, error)
+	// Получить всех пользователей
+	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
 	// Получить количество подписок и подписчиков пользователя
 	GetNumSubscribersAndSubscriptions(context.Context, *GetSubscribersAndSubscriptionsRequest) (*GetSubscribersAndSubscriptionsResponse, error)
 	mustEmbedUnimplementedUserFollowServer()
@@ -133,8 +163,14 @@ func (UnimplementedUserFollowServer) AddNewPost(context.Context, *AddNewPostRequ
 func (UnimplementedUserFollowServer) GetPostsAddedByUser(context.Context, *GetPostsAddedByUserRequest) (*GetPostsAddedByUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPostsAddedByUser not implemented")
 }
+func (UnimplementedUserFollowServer) GetPostsIntendedForTheUser(context.Context, *GetPostsIntendedForTheUserRequest) (*GetPostsIntendedForTheUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPostsIntendedForTheUser not implemented")
+}
 func (UnimplementedUserFollowServer) SubscribeUsers(context.Context, *SubscribeUsersRequest) (*SubscribeUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubscribeUsers not implemented")
+}
+func (UnimplementedUserFollowServer) GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllUsers not implemented")
 }
 func (UnimplementedUserFollowServer) GetNumSubscribersAndSubscriptions(context.Context, *GetSubscribersAndSubscriptionsRequest) (*GetSubscribersAndSubscriptionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNumSubscribersAndSubscriptions not implemented")
@@ -214,6 +250,24 @@ func _UserFollow_GetPostsAddedByUser_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserFollow_GetPostsIntendedForTheUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPostsIntendedForTheUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserFollowServer).GetPostsIntendedForTheUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserFollow_GetPostsIntendedForTheUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserFollowServer).GetPostsIntendedForTheUser(ctx, req.(*GetPostsIntendedForTheUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserFollow_SubscribeUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubscribeUsersRequest)
 	if err := dec(in); err != nil {
@@ -228,6 +282,24 @@ func _UserFollow_SubscribeUsers_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserFollowServer).SubscribeUsers(ctx, req.(*SubscribeUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserFollow_GetAllUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAllUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserFollowServer).GetAllUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserFollow_GetAllUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserFollowServer).GetAllUsers(ctx, req.(*GetAllUsersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -270,8 +342,16 @@ var UserFollow_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserFollow_GetPostsAddedByUser_Handler,
 		},
 		{
+			MethodName: "GetPostsIntendedForTheUser",
+			Handler:    _UserFollow_GetPostsIntendedForTheUser_Handler,
+		},
+		{
 			MethodName: "SubscribeUsers",
 			Handler:    _UserFollow_SubscribeUsers_Handler,
+		},
+		{
+			MethodName: "GetAllUsers",
+			Handler:    _UserFollow_GetAllUsers_Handler,
 		},
 		{
 			MethodName: "GetNumSubscribersAndSubscriptions",

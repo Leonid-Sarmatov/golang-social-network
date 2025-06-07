@@ -17,13 +17,28 @@ service UserFollow {
     rpc GetPostsAddedByUser (GetPostsAddedByUserRequest) returns (GetPostsAddedByUserResponse);
 
     // Получить посты от подписок пользователя
-    //rpc GetPostsIntendedForTheUser (GetPostsIntendedForTheUserRequest) returns (GetPostsIntendedForTheUserResponse);
+    rpc GetPostsIntendedForTheUser (GetPostsIntendedForTheUserRequest) returns (GetPostsIntendedForTheUserResponse);
 
     // Подписать одного пользователя на другого
     rpc SubscribeUsers (SubscribeUsersRequest) returns (SubscribeUsersResponse);
 
+    // Получить всех пользователей
+    rpc GetAllUsers (GetAllUsersRequest) returns (GetAllUsersResponse);
+
     // Получить количество подписок и подписчиков пользователя
     rpc GetNumSubscribersAndSubscriptions (GetSubscribersAndSubscriptionsRequest) returns (GetSubscribersAndSubscriptionsResponse);
+}
+
+message Post {
+    bytes id = 1;
+    string autor_user_name = 2;
+    int64 time_of_create = 3;
+    string color = 4;
+    repeated string liked_the_post = 5;
+}
+
+message User {
+    string user_name = 1;
 }
 
 // Создание нового пользователя
@@ -59,12 +74,14 @@ message GetPostsAddedByUserResponse {
     repeated Post posts = 1;
 }
 
-message Post {
-    bytes id = 1;
-    string autor_user_name = 2;
-    int64 time_of_create = 3;
-    string color = 4;
-    repeated string liked_the_post = 5;
+// Получить посты от подписок пользователя
+
+message GetPostsIntendedForTheUserRequest {
+     string user_name = 1;
+}
+
+message GetPostsIntendedForTheUserResponse {
+    repeated Post posts = 1;
 }
 
 // Подписать одного пользователя на другого
@@ -76,6 +93,17 @@ message SubscribeUsersRequest {
 
 message SubscribeUsersResponse {
     string result_message = 1;
+}
+
+// Получить всех пользователей
+
+message GetAllUsersRequest {
+    string requester_user_name = 1;
+}
+
+message GetAllUsersResponse {
+    repeated User users = 1;
+    repeated bool subscribe_to_requester = 2;
 }
 
 // Получить количество подписок и подписчиков пользователя

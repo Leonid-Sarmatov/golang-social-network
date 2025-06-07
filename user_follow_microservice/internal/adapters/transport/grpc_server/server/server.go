@@ -19,10 +19,14 @@ type coreInterface interface {
 	AddNewUser(userName string) error
 	// Прлучить посты, добавленные определенным пользователем
 	GetPostsAddedByUser(username string, timeFrom time.Time, timeTo time.Time) ([]*core.Post, error)
+	// Получить все посты от всех подписок пользователя
+	GetPostsIntendedForTheUser(username string) ([]*core.Post, error)
+	// Получить вообще всех пользователей
+    GetAllUsers(username string) ([]*core.UserSubscribeToRequesterDecorator, error)
 	// Поставить посту лайк
-	SetPostLike(postID []byte, likedUser string) error
+	//SetPostLike(postID []byte, likedUser string) error
 	// Получить количество лайков поста
-	GetPostLikes(postID []byte) (int, error)
+	//GetPostLikes(postID []byte) (int, error)
 }
 
 type server struct {
@@ -87,7 +91,7 @@ func (s *server)GetPostsAddedByUser(ctx context.Context, req *GetPostsAddedByUse
 	//log.Printf("<user_follow server.go GetPostsAddedByUser> name = %v", req.UserName)
 	posts, err := s.core.GetPostsAddedByUser(req.UserName, req.TimeFrom.AsTime(), req.TimeTo.AsTime())
 	if err != nil {
-		return &GetPostsAddedByUserResponse{ Posts: nil }, fmt.Errorf("не удалось Получить список постов: %v", err)
+		return &GetPostsAddedByUserResponse{ Posts: nil }, fmt.Errorf("не удалось получить список постов: %v", err)
 	}
 	resPosts := make([]*Post, len(posts))
 	for i, p := range posts {
@@ -96,18 +100,54 @@ func (s *server)GetPostsAddedByUser(ctx context.Context, req *GetPostsAddedByUse
 			AutorUserName: p.AutorUserName,
 			TimeOfCreate: p.TimeOfCreate,
 			Color: p.Color,
-			LikedThePost: p.LikedThePost,
+			//LikedThePost: p.LikedThePost,
 		}
 	}
 	return &GetPostsAddedByUserResponse{ Posts: resPosts }, nil
 }
+
+// Получить посты от подписок пользователя
+func (s *server)GetPostsIntendedForTheUser(ctx context.Context, req *GetPostsIntendedForTheUserRequest) (*GetPostsIntendedForTheUserResponse, error) {
+	posts, err := s.core.GetPostsIntendedForTheUser(req.UserName)
+	if err != nil {
+		return &GetPostsIntendedForTheUserResponse{ Posts: nil }, fmt.Errorf("не удалось получить список постов: %v", err)
+	}
+	resPosts := make([]*Post, len(posts))
+	for i, p := range posts {
+		resPosts[i] = &Post{
+			Id: p.ID,
+			AutorUserName: p.AutorUserName,
+			TimeOfCreate: p.TimeOfCreate,
+			Color: p.Color,
+			//LikedThePost: p.LikedThePost,
+		}
+	}
+	return &GetPostsIntendedForTheUserResponse{ Posts: resPosts }, nil
+}
+
 
 // Подписать одного пользователя на другого
 func (s *server)SubscribeUsers(ctx context.Context, req *SubscribeUsersRequest) (*SubscribeUsersResponse, error) {
 	return nil, nil
 }
 
-// Получить количество подписок и подписчиков пользователя
-func (s *server)GetNumSubscribersAndSubscriptions(ctx context.Context, req *GetSubscribersAndSubscriptionsRequest) (*GetSubscribersAndSubscriptionsResponse, error) {
-	return nil, nil
+// Получить всех пользователей
+func (s *server)GetAllUsers(ctx context.Context, req *GetAllUsersRequest) (*GetAllUsersResponse, error) {
+	users, err := s.core.GetAllUsers(req.RequesterUserName)
+	if err != nil {
+		return &GetAllUsersResponse{ Users: nil }, fmt.Errorf("не удалось получить список постов: %v", err)
+	}
+	resUsers := make([]*User, len(users))
+	for i, u := range users {
+		resUsers[i] = &User{
+			UserName: u.UserName,
+
+		}
+	}
+	return &GetAllUsersResponse{ Users: resUsers }, nil
 }
+
+// // Получить количество подписок и подписчиков пользователя
+// func (s *server)GetNumSubscribersAndSubscriptions(ctx context.Context, req *GetSubscribersAndSubscriptionsRequest) (*GetSubscribersAndSubscriptionsResponse, error) {
+// 	return nil, nil
+// }

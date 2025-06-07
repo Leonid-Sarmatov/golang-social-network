@@ -59,6 +59,10 @@ func (s *server) Init() {
 	authorized.POST("/api/posts/create", posts.NewAddNewPostHandler(&s.UserFollowGRPC))
 	// Получить посты
 	authorized.POST("/api/posts/getByUserName", posts.NewGetPostsAddedByUserHandler(&s.UserFollowGRPC))
+	// Получить всех пользователей
+	authorized.POST("/api/users/getAll")
+	// Подписать одного пользователя на другого
+	authorized.POST("/api/users/subscribe")
 
 	/* -------- Вызовы перенапрявляемые микросервису контента ------- */
 	//r.GET("/", nil)

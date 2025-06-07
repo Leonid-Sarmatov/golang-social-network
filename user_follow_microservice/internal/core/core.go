@@ -21,10 +21,16 @@ type User struct {
 	ID               []byte   // Уникальный идентификатор
 	UserName         string   // Имя пользователя
 	TimeOfCreate     int64    // Время регистрации
-	Subscribers      []string // Подписчики (слайс с именами пользователей, которые подписаны на пользователя)
-	Subscriptions    []string // Подписки (слайс с именами пользователей, на которых подписан пользователь)
-	SubscribersNum   int      // Количество подписчиков
-	SubscriptionsNum int      // Количество полписок
+	//Subscribers      []string // Подписчики (слайс с именами пользователей, которые подписаны на пользователя)
+	//Subscriptions    []string // Подписки (слайс с именами пользователей, на которых подписан пользователь)
+	//SubscribersNum   int      // Количество подписчиков
+	//SubscriptionsNum int      // Количество полписок
+}
+
+// Декоратор, добавляющий информацию о том, подписан ли клиент за запрашиваемого пользователя
+type UserSubscribeToRequesterDecorator struct {
+	User
+	SubscribeToRequester bool
 }
 
 // Структура поста
@@ -33,7 +39,7 @@ type Post struct {
 	AutorUserName string   // Имя пользователя принадлежащее создателю поста
 	TimeOfCreate  int64    // Время создания
 	Color         string   // Цвет
-	LikedThePost  []string // Имена пользователей, которые поставили лайк
+	//LikedThePost  []string // Имена пользователей, которые поставили лайк
 }
 
 // Абстрактное хранилище постов
@@ -42,10 +48,12 @@ type postStorage interface {
 	AddNewPost(post *Post) error
 	// Прлучить посты, добавленные определенным пользователем
 	GetPostsAddedByUser(username string, timeFrom, timeTo time.Time) ([]*Post, error)
+	// Получить все посты от всех подписок пользователя
+	GetPostsIntendedForTheUser(username string) ([]*Post, error)
 	// Поставить посту лайк
-	SetPostLike(postID []byte, likedUser string) error
+	//SetPostLike(postID []byte, likedUser string) error
 	// Получить количество лайков поста
-	GetPostLikes(postID []byte) (int, error)
+	//GetPostLikes(postID []byte) (int, error)
 }
 
 // Абстрактное хранилище пользователей
@@ -53,9 +61,11 @@ type userStorage interface {
 	// Добавить нового пользователя
 	AddNewUser(user *User) error
 	// Проверить, существует ли такое имя пользователя в системе или нет
-	CheckExistsUserName(userName string) (bool, error)
+	//(userName string) (bool, error)
 	// Подписать одного пользователя на другого
 	SubscribeUsers(userName, subscriberUserName string) error
+	// Получить вообще всех пользователей
+    GetAllUsers(username string) ([]*UserSubscribeToRequesterDecorator, error)
 }
 
 // Генератор уникальных ID для постов и для пользователей
@@ -132,7 +142,7 @@ func (c *Core) AddNewPost(userName, color string) error {
 		AutorUserName: userName,
 		TimeOfCreate: time.Now().Unix(),
 		Color: color,
-		LikedThePost: make([]string, 0),
+		//LikedThePost: make([]string, 0),
 	}
 	// Генерация уникального ID
 	err := c.IdGenerator.GenAndSetIDForPost(&p)
@@ -156,6 +166,7 @@ GetPostsAddedByUser прочитывает посты определенного
   - color string: Цвет поста
 
 Возвращает:
+  - []*Post: посты
   - error: ошибка
 */
 func (c *Core) GetPostsAddedByUser(userName string, timeFrom, timeTo time.Time) ([]*Post, error) {
@@ -172,13 +183,61 @@ func (c *Core) GetPostsAddedByUser(userName string, timeFrom, timeTo time.Time) 
 	return posts, nil
 }
 
-func (c *Core) SetPostLike(postID []byte, likedUser string) error {
-	return nil
+/*
+GetPostsIntendedForTheUser анализирует подписки пользователя
+и выдает все посты от авторов, на которых он подписан
+
+Аргументы:
+  - userName string: Имя пользователя
+
+Возвращает:
+  - []*Post: посты
+  - error: ошибка
+*/
+func (c *Core)GetPostsIntendedForTheUser(userName string) ([]*Post, error) {
+	// Проверка входных параметров
+	if userName == "" {
+		return nil, errors.Join(ErrIncorrectData, fmt.Errorf("некорректные входные параметры"))
+	}
+	// Получение постов из хранилища
+	p, err := c.PostStorage.GetPostsIntendedForTheUser(userName)
+		if err != nil {
+		return nil, errors.Join(ErrReadData, fmt.Errorf("невозможно прочитать посты созданные пользователем %v: %v", userName, err))
+	}
+	return p, nil
 }
 
-func (c *Core) GetPostLikes(postID []byte) (int, error) {
-	return -1, nil
+	// Получить вообще всех пользователей
+/*
+GetAllUsers возвращает вообще всех пользователей
+
+Аргументы:
+  - userName string: Имя пользователя
+
+Возвращает:
+  - []*Users: посты
+  - error: ошибка
+*/
+func (c *Core)GetAllUsers(userName string) ([]*UserSubscribeToRequesterDecorator, error) {
+	// Проверка входных параметров
+	if userName == "" {
+		return nil, errors.Join(ErrIncorrectData, fmt.Errorf("некорректные входные параметры"))
+	}
+	// Получение пользователей из хранилища
+	u, err := c.UserStorage.GetAllUsers(userName)
+		if err != nil {
+		return nil, errors.Join(ErrReadData, fmt.Errorf("невозможно прочитать посты созданные пользователем %v: %v", userName, err))
+	}
+	return u, nil
 }
+
+// func (c *Core) SetPostLike(postID []byte, likedUser string) error {
+// 	return nil
+// }
+
+// func (c *Core) GetPostLikes(postID []byte) (int, error) {
+// 	return -1, nil
+// }
 
 // type coreInterface interface {
 // 	// Добавить пост

@@ -44,6 +44,14 @@
         </button>
       </div>
       
+      <!-- Список постов -->
+      <div id="postsContainer" class="post-container space-y-4">
+        <!-- Посты будут загружаться здесь -->
+        <div class="text-center py-8 text-gray-500">Loading posts...</div>
+      </div>
+    </div>
+
+    <div id="profile" class="tab-content hidden">
       <!-- Форма создания поста -->
       <div class="bg-white p-4 rounded-lg shadow mb-6">
         <textarea id="postContent" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-3" placeholder="What's on your mind?"></textarea>
@@ -61,18 +69,12 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Список постов -->
-      <div id="postsContainer" class="post-container space-y-4">
+      <div id="selfPostsContainer" class="post-container space-y-4">
         <!-- Посты будут загружаться здесь -->
         <div class="text-center py-8 text-gray-500">Loading posts...</div>
       </div>
-    </div>
-
-    <div id="profile" class="tab-content hidden">
-      <h1 class="text-2xl font-semibold mb-4">Your Profile</h1>
-      <div class="bg-white p-4 rounded shadow mb-4">Profile details go here</div>
-      <div class="bg-white p-4 rounded shadow">User posts list goes here</div>
     </div>
 
     <div id="search" class="tab-content hidden">
@@ -206,7 +208,8 @@
         }
 
         const posts = await response.json();
-        renderPosts(posts.posts);
+        renderPosts(posts.posts, 'postsContainer');
+        renderPosts(posts.posts, 'selfPostsContainer');
       } catch (err) {
         console.error('Error loading posts:', err);
         document.getElementById('postsContainer').innerHTML = `
@@ -218,8 +221,8 @@
     }
 
     // Рендеринг ответа от сервера для отображения постов на странице
-    function renderPosts(posts) {
-      const container = document.getElementById('postsContainer');
+    function renderPosts(posts, c) {
+      const container = document.getElementById(c);
       console.log(posts)
       
       if (!posts || posts.length === 0) {
@@ -231,7 +234,7 @@
         const colorClass = {
           green: 'border-green-500',
           blue: 'border-blue-500',
-          purple: 'border-purple-500'
+          purple: 'border-rose-500'
         }[post.color] || 'border-gray-300';
 
         return `
@@ -287,6 +290,101 @@
       const date = new Date(dateString);
       return date.toLocaleString();
     }
+
+    async function loadUsers() {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:8080/api/users/getAll', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to load users');
+
+        const users = await response.json();
+        renderUsers(users);
+      } catch (err) {
+        console.error('Error loading users:', err);
+        document.getElementById('search').innerHTML = `
+          <div class="text-center py-8 text-red-500">
+            Failed to load users. Please try again later.
+          </div>
+        `;
+      }
+    }
+
+    function renderUsers(users) {
+      const container = document.getElementById('search');
+      container.innerHTML = `<h1 class="text-2xl font-semibold mb-4">Users</h1>`;
+
+      if (!users || users.length === 0) {
+        container.innerHTML += `<div class="text-center py-8 text-gray-500">No users found.</div>`;
+        return;
+      }
+
+      container.innerHTML += `
+        <div class="space-y-4" id="userList">
+          ${users.map(user => `
+            <div class="post bg-white p-4 rounded-lg shadow border-l-4 border-gray-300 flex justify-between items-center">
+              <div class="flex items-center space-x-3">
+                <div class="bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center">
+                  <span class="text-gray-600">${user.username.charAt(0).toUpperCase()}</span>
+                </div>
+                <div>
+                  <h3 class="font-medium">${user.username}</h3>
+                </div>
+              </div>
+              <button
+                class="subscribe-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-4 rounded transition"
+                data-username="${user.username}"
+                data-subscribed="false"
+              >
+                Subscribe
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      document.querySelectorAll('.subscribe-btn').forEach(btn => {
+        btn.addEventListener('click', () => toggleSubscribe(btn));
+      });
+    }
+
+    async function toggleSubscribe(button) {
+      const username = button.dataset.username;
+      const subscribed = button.dataset.subscribed === 'true';
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await fetch('http://localhost:8080/api/users/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            target_user: username,
+            subscribe: !subscribed
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to subscribe/unsubscribe');
+
+        // Обновление UI
+        button.dataset.subscribed = (!subscribed).toString();
+        button.textContent = !subscribed ? 'Unsubscribe' : 'Subscribe';
+        button.classList.toggle('bg-blue-600', subscribed);
+        button.classList.toggle('hover:bg-blue-700', subscribed);
+        button.classList.toggle('bg-gray-400', !subscribed);
+        button.classList.toggle('hover:bg-gray-500', !subscribed);
+      } catch (err) {
+        console.error('Subscribe error:', err);
+        alert('Error while updating subscription status');
+      }
+    }
+
 
   </script>
 

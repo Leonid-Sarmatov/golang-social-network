@@ -182,16 +182,6 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 	return nil
 }
 
-// Поставить посту лайк
-func (neo *Neo4jStorage) SetPostLike(postID []byte, likedUser string) error {
-	return nil
-}
-
-// Получить количество лайков поста
-func (neo *Neo4jStorage) GetPostLikes(postID []byte) (int, error) {
-	return -1, nil
-}
-
 /*
 AddNewUser добавить нового пользователя
 
@@ -214,9 +204,11 @@ func (neo *Neo4jStorage) AddNewUser(user *core.User) error {
 
 	// Выполнение транзакции для создания поста
 	_, err := s.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := "CREATE (u:User {UserName: $name})"
+		query := "CREATE (u:User {ID: $id, UserName: $name, TimeOfCreate: $time})"
 		params := map[string]any{
+			"id":   user.ID,
 			"name": user.UserName,
+			"time": user.TimeOfCreate,
 		}
 
 		res, err := tx.Run(ctx, query, params)
@@ -232,11 +224,6 @@ func (neo *Neo4jStorage) AddNewUser(user *core.User) error {
 	}
 
 	return nil
-}
-
-// Проверить, существует ли такое имя пользователя в системе или нет
-func (neo *Neo4jStorage) CheckExistsUserName(userName string) (bool, error) {
-	return false, nil
 }
 
 /*
@@ -294,7 +281,7 @@ GetUserPosts получить все посты пользователя
   - error: ошибка
 */
 func (neo *Neo4jStorage) GetPostsAddedByUser(username string, timeFrom, timeTo time.Time) ([]*core.Post, error) {
-	// log.Printf("<user_follow storage.go GetPostsAddedByUser> (username: %v, timeFrom: %v timeTo: %v)", 
+	// log.Printf("<user_follow storage.go GetPostsAddedByUser> (username: %v, timeFrom: %v timeTo: %v)",
 	// 	username, timeFrom, timeTo,
 	// )
 	ctx := context.Background()
@@ -342,6 +329,104 @@ func (neo *Neo4jStorage) GetPostsAddedByUser(username string, timeFrom, timeTo t
 		return nil, fmt.Errorf("failed to get user posts: %w", err)
 	}
 	return result.([]*core.Post), nil
+}
+
+func (neo *Neo4jStorage) GetPostsIntendedForTheUser(userName string) ([]*core.Post, error) {
+	ctx := context.Background()
+	s := neo.openReadSession(ctx)
+
+	defer func() {
+		err := neo.closeSession(ctx, s)
+		if err != nil {
+			log.Printf("<user_follow storage.go GetPostsIntendedForTheUser> Не удалось закрыть сессию после получения постов: %v", err)
+		}
+	}()
+
+	result, err := s.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MATCH (subscriber:User {UserName: $username})-[:SUBSCRIBER]->(author:User)-[:PUBLISHER]->(p:Post)
+			RETURN p.ID AS id, p.AutorUserName AS author, p.TimeOfCreate AS time, p.Color AS color
+			ORDER BY p.TimeOfCreate DESC`
+
+		//log.Printf("time from: %v (%v), time to: %v (%v)", timeFrom, timeFrom.Unix(), timeTo, timeTo.Unix())
+		cursor, err := tx.Run(ctx, query, map[string]any{
+			"username": userName,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		var posts []*core.Post
+		for cursor.Next(ctx) {
+			record := cursor.Record()
+			posts = append(posts, &core.Post{
+				ID:            record.Values[0].([]byte),
+				AutorUserName: record.Values[1].(string),
+				TimeOfCreate:  record.Values[2].(int64),
+				Color:         record.Values[3].(string),
+			})
+		}
+
+		return posts, cursor.Err()
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user posts: %w", err)
+	}
+	return result.([]*core.Post), nil
+}
+
+func (neo *Neo4jStorage) GetAllUsers(userName string) ([]*core.UserSubscribeToRequesterDecorator, error) {
+	ctx := context.Background()
+	s := neo.openReadSession(ctx)
+
+	defer func() {
+		err := neo.closeSession(ctx, s)
+		if err != nil {
+			log.Printf("<user_follow storage.go GetAllUsers> Не удалось закрыть сессию после получения пользователей: %v", err)
+		}
+	}()
+
+	result, err := s.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MATCH (target:User)
+			OPTIONAL MATCH (requester:User {UserName: $requesterUsername})-[:SUBSCRIBER]->(target)
+			RETURN 
+			target.ID AS id, 
+			target.UserName AS username, 
+			target.TimeOfCreate AS time, 
+			requester IS NOT NULL AS subscribeToRequester`
+
+		//log.Printf("time from: %v (%v), time to: %v (%v)", timeFrom, timeFrom.Unix(), timeTo, timeTo.Unix())
+		cursor, err := tx.Run(ctx, query, map[string]any{
+			"requesterUsername": userName,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		
+
+		var users []*core.UserSubscribeToRequesterDecorator
+		for cursor.Next(ctx) {
+			record := cursor.Record()
+			users = append(users, &core.UserSubscribeToRequesterDecorator{
+				User: core.User{
+					ID:           record.Values[0].([]byte),
+					UserName:     record.Values[1].(string),
+					TimeOfCreate: record.Values[2].(int64),
+				},
+				SubscribeToRequester: record.Values[3].(bool),
+			})
+		}
+
+		return users, cursor.Err()
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users: %w", err)
+	}
+	return result.([]*core.UserSubscribeToRequesterDecorator), nil
 }
 
 /*
