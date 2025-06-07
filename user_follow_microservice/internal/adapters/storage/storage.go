@@ -48,10 +48,10 @@ func (neo *Neo4jStorage) StartConnect(host, port, dbName, username, password str
 	)
 
 	if err != nil {
-		log.Printf("Ошибка создания драйвера: %v", err)
+		log.Printf("<user_follow storage.go StartConnect> Ошибка создания драйвера: %v", err)
 		return fmt.Errorf("ошибка создания драйвера: %v", err)
 	}
-	log.Printf("Драйвер БД успешно создан и подключен")
+	log.Printf("<user_follow storage.go StartConnect> Драйвер БД успешно создан и подключен")
 
 	neo.driver = driver
 	neo.dbName = dbName
@@ -70,7 +70,7 @@ func (neo *Neo4jStorage) CloseConnect() error {
 	defer cancel()
 
 	if err := neo.driver.Close(ctx); err != nil {
-		log.Printf("Ошибка при закрытии драйвера: %v", err)
+		log.Printf("<user_follow storage.go CloseConnect> Ошибка при закрытии драйвера: %v", err)
 		return fmt.Errorf("ошибка при закрытии драйвера: %v", err)
 	}
 
@@ -126,7 +126,7 @@ closeSession закрывает сесии на чтение и запись
 func (neo *Neo4jStorage) closeSession(ctx context.Context, session neo4j.SessionWithContext) error {
 	// Закрываем сессию
 	if err := session.Close(ctx); err != nil {
-		log.Printf("Ошибка закрытия сессии: %v", err)
+		log.Printf("<user_follow storage.go closeSession> Ошибка закрытия сессии: %v", err)
 		return fmt.Errorf("ошибка закрытия сессии: %v", err)
 	}
 	return nil
@@ -148,7 +148,7 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 	defer func() {
 		err := neo.closeSession(ctx, s)
 		if err != nil {
-			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+			log.Printf("<user_follow storage.go AddNewPost> Не удалось закрыть сессию после сохранения нового поста: %v", err)
 		}
 	}()
 
@@ -162,7 +162,7 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 		params := map[string]any{
 			"id":    post.ID,
 			"name":  post.AutorUserName,
-			"time":  time.Now().Unix(),
+			"time":  post.TimeOfCreate,
 			"color": post.Color,
 		}
 
@@ -174,7 +174,7 @@ func (neo *Neo4jStorage) AddNewPost(post *core.Post) error {
 		return nil, res.Err()
 	})
 	if err != nil {
-		log.Printf("Ошибка транзакции: %v", err)
+		log.Printf("<user_follow storage.go AddNewPost> Ошибка транзакции: %v", err)
 		return fmt.Errorf("ошибка транзакции: %v", err)
 	}
 	log.Printf("Узел поста в БД успешно создан, пользователь = %v, цвет = %v", post.AutorUserName, post.Color)
@@ -208,7 +208,7 @@ func (neo *Neo4jStorage) AddNewUser(user *core.User) error {
 	defer func() {
 		err := neo.closeSession(ctx, s)
 		if err != nil {
-			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+			log.Printf("<user_follow storage.go CloseConnect> Не удалось закрыть сессию после сохранения нового поста: %v", err)
 		}
 	}()
 
@@ -227,7 +227,7 @@ func (neo *Neo4jStorage) AddNewUser(user *core.User) error {
 		return nil, res.Err()
 	})
 	if err != nil {
-		log.Fatalf("Ошибка транзакции: %v", err)
+		log.Printf("<user_follow storage.go CloseConnect> Ошибка транзакции: %v", err)
 		return fmt.Errorf("ошибка транзакции: %v", err)
 	}
 
@@ -256,7 +256,7 @@ func (neo *Neo4jStorage) SubscribeUsers(userName, subscriberUserName string) err
 	defer func() {
 		err := neo.closeSession(ctx, s)
 		if err != nil {
-			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+			log.Printf("<user_follow storage.go CloseConnect> Не удалось закрыть сессию после сохранения нового поста: %v", err)
 		}
 	}()
 
@@ -276,7 +276,7 @@ func (neo *Neo4jStorage) SubscribeUsers(userName, subscriberUserName string) err
 		return nil, res.Err()
 	})
 	if err != nil {
-		log.Printf("Ошибка транзакции: %v", err)
+		log.Printf("<user_follow storage.go CloseConnect> Ошибка транзакции: %v", err)
 		return fmt.Errorf("ошибка транзакции: %v", err)
 	}
 
@@ -293,24 +293,33 @@ GetUserPosts получить все посты пользователя
   - []*core.Post: список постов
   - error: ошибка
 */
-func (neo *Neo4jStorage) GetPostsAddedByUser(username string) ([]*core.Post, error) {
+func (neo *Neo4jStorage) GetPostsAddedByUser(username string, timeFrom, timeTo time.Time) ([]*core.Post, error) {
+	// log.Printf("<user_follow storage.go GetPostsAddedByUser> (username: %v, timeFrom: %v timeTo: %v)", 
+	// 	username, timeFrom, timeTo,
+	// )
 	ctx := context.Background()
 	s := neo.openReadSession(ctx)
 
 	defer func() {
 		err := neo.closeSession(ctx, s)
 		if err != nil {
-			log.Printf("Не удалось закрыть сессию после сохранения нового поста: %v", err)
+			log.Printf("<user_follow storage.go CloseConnect> Не удалось закрыть сессию после сохранения нового поста: %v", err)
 		}
 	}()
 
 	result, err := s.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-            MATCH (u:User {Username: $username})-[:PUBLISHER]->(p:Post)
+            MATCH (u:User {UserName: $username})-[:PUBLISHER]->(p:Post)
+            WHERE p.TimeOfCreate >= $timeFrom AND p.TimeOfCreate <= $timeTo
             RETURN p.ID as id, p.AutorUserName as author, p.TimeOfCreate as time, p.Color as color
             ORDER BY p.TimeOfCreate DESC`
 
-		cursor, err := tx.Run(ctx, query, map[string]any{"username": username})
+		//log.Printf("time from: %v (%v), time to: %v (%v)", timeFrom, timeFrom.Unix(), timeTo, timeTo.Unix())
+		cursor, err := tx.Run(ctx, query, map[string]any{
+			"username": username,
+			"timeFrom": timeFrom.Unix(),
+			"timeTo":   timeTo.Unix(),
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -332,7 +341,6 @@ func (neo *Neo4jStorage) GetPostsAddedByUser(username string) ([]*core.Post, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user posts: %w", err)
 	}
-
 	return result.([]*core.Post), nil
 }
 

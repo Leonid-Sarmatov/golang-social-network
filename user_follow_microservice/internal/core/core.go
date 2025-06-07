@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	//"log"
 )
 
 var (
@@ -40,7 +41,7 @@ type postStorage interface {
 	// Добавить пост
 	AddNewPost(post *Post) error
 	// Прлучить посты, добавленные определенным пользователем
-	GetPostsAddedByUser(userName string) ([]*Post, error)
+	GetPostsAddedByUser(username string, timeFrom, timeTo time.Time) ([]*Post, error)
 	// Поставить посту лайк
 	SetPostLike(postID []byte, likedUser string) error
 	// Получить количество лайков поста
@@ -91,13 +92,9 @@ AddNewUser регистрирует нового пользователя
   - error: ошибка
 */
 func (core *Core) AddNewUser(userName string) error {
-	// Проверка уникальности имени пользователя
-	exist, err := core.UserStorage.CheckExistsUserName(userName)
-	if err != nil {
-		return errors.Join(ErrReadData, err)
-	}
-	if exist {
-		return errors.Join(ErrIncorrectData, fmt.Errorf("this user name is already exist"))
+	// Проверка входных параметров
+	if userName == "" {
+		return errors.Join(ErrIncorrectData, fmt.Errorf("пустые строки в качестве аргументов"))
 	}
 	// Создание пользователя
 	u := &User{
@@ -107,7 +104,7 @@ func (core *Core) AddNewUser(userName string) error {
 	// Создание ID
 	core.IdGenerator.GenAndSetIDForUser(u)
 	// Запись в хранилище
-	err = core.UserStorage.AddNewUser(u)
+	err := core.UserStorage.AddNewUser(u)
 	if err != nil {
 		return errors.Join(ErrWriteData, err)
 	}
@@ -125,18 +122,24 @@ AddNewPost добавляет новый пост
   - error: ошибка
 */
 func (c *Core) AddNewPost(userName, color string) error {
+	//log.Printf("<user_follow core.go AddNewPost> name = %v", userName)
+	// Проверка входных параметров
+	if userName == "" || color == "" {
+		return errors.Join(ErrIncorrectData, fmt.Errorf("пустые строки в качестве аргументов"))
+	}
+	// Заполнение необходимых полей поста
 	p := Post{
 		AutorUserName: userName,
 		TimeOfCreate: time.Now().Unix(),
 		Color: color,
 		LikedThePost: make([]string, 0),
 	}
-
+	// Генерация уникального ID
 	err := c.IdGenerator.GenAndSetIDForPost(&p)
 	if err != nil {
 		return errors.Join(ErrCreateResource, fmt.Errorf("не удалось задать ID при создании поста: %v", err))
 	}
-
+	// Отправка на сохранение в хранилище
 	err = c.PostStorage.AddNewPost(&p)
 	if err != nil {
 		return errors.Join(ErrWriteData, fmt.Errorf("не удалось сохранить новый пост: %v", err))
@@ -155,8 +158,14 @@ GetPostsAddedByUser прочитывает посты определенного
 Возвращает:
   - error: ошибка
 */
-func (c *Core) GetPostsAddedByUser(userName string) ([]*Post, error) {
-	posts, err := c.PostStorage.GetPostsAddedByUser(userName)
+func (c *Core) GetPostsAddedByUser(userName string, timeFrom, timeTo time.Time) ([]*Post, error) {
+	//log.Printf("<user_follow core.go GetPostsAddedByUser> name = %v", userName)
+	// Проверка входных параметров
+	if userName == "" || !timeTo.After(timeFrom) {
+		return nil, errors.Join(ErrIncorrectData, fmt.Errorf("некорректные входные параметры"))
+	}
+	// Получение постов из хранилища
+	posts, err := c.PostStorage.GetPostsAddedByUser(userName, timeFrom, timeTo)
 	if err != nil {
 		return nil, errors.Join(ErrReadData, fmt.Errorf("невозможно прочитать посты созданные пользователем %v: %v", userName, err))
 	}

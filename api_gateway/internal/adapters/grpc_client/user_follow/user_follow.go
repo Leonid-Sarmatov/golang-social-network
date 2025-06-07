@@ -1,11 +1,13 @@
 package userfollow
 
-
 import (
-	"log"
 	"context"
+	"log"
+	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	. "api_gateway/internal/adapters/grpc_client/user_follow/generated"
 )
@@ -62,9 +64,11 @@ func (c *UserFollowGRPC) AddNewPost(userName, color string) (string, error) {
 	return res.ResultMessage, nil
 }
 
-func (c *UserFollowGRPC) GetPostsAddedByUser(userName string) ([]*Post, error) {
+func (c *UserFollowGRPC) GetPostsAddedByUser(userName string, timeFrom, timeTo time.Time) ([]*Post, error) {
 	res, err := c.userFollowClient.GetPostsAddedByUser(context.Background(), &GetPostsAddedByUserRequest{
 		UserName: userName,
+		TimeFrom: timestamppb.New(timeFrom),
+		TimeTo: timestamppb.New(timeTo),
 	})
 	if err != nil {
 		log.Printf("Failed to GetPostsAddedByUser: %v", err)

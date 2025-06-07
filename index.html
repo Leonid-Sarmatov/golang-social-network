@@ -186,8 +186,8 @@
     async function loadPosts() {
       try {
         const token = localStorage.getItem('token');
-        const timeTo = Math.floor(Date.now() / 1000);
-        const timeFrom = now - 7 * 24 * 60 * 60;
+        const timeTo = new Date(); // сейчас
+        const timeFrom = new Date(timeTo.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 дней назад
 
         const response = await fetch('http://localhost:8080/api/posts/getByUserName', {
           method: 'POST',
@@ -206,7 +206,7 @@
         }
 
         const posts = await response.json();
-        renderPosts(posts);
+        renderPosts(posts.posts);
       } catch (err) {
         console.error('Error loading posts:', err);
         document.getElementById('postsContainer').innerHTML = `
@@ -220,6 +220,7 @@
     // Рендеринг ответа от сервера для отображения постов на странице
     function renderPosts(posts) {
       const container = document.getElementById('postsContainer');
+      console.log(posts)
       
       if (!posts || posts.length === 0) {
         container.innerHTML = `<div class="text-center py-8 text-gray-500">No posts yet. Be the first to post!</div>`;
@@ -241,7 +242,7 @@
               </div>
               <div class="flex-1">
                 <h3 class="font-medium">${post.author || 'Unknown user'}</h3>
-                <p class="text-xs text-gray-500">${formatDate(post.createdAt)}</p>
+                <p class="text-xs text-gray-500">${formatDate(post.create_at)}</p>
               </div>
             </div>
             <p class="text-gray-800 whitespace-pre-line">${post.content}</p>

@@ -6,26 +6,37 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	//"google.golang.org/protobuf/encoding/protojson"
 	"github.com/gin-gonic/gin"
 )
 
+type post struct {
+	ID            []byte `json:"id"`
+	AutorUserName string `json:"author"`
+	TimeOfCreate  int64  `json:"create_at"`
+	Color         string `json:"color"`
+	Content       string `json:"content"`
+}
+
 type addNewPostRequest struct {
-	Color    string `json:"color"`
+	Color string `json:"color"`
 }
 
 type getPostsAddedByUserRequest struct {
-	UserName string `json:"username"`
+	TimeFrom time.Time `json:"time_from"`
+	TimeTo   time.Time `json:"time_to"`
 }
 
 type getPostsAddedByUserResponse struct {
 	messages.BaseResponse
-	Colors []string `json:"colors"`
+	Posts []post `json:"posts"`
 }
 
 type PostsInterface interface {
 	AddNewPost(userName, color string) (string, error)
-	GetPostsAddedByUser(userName string) ([]*generated.Post, error)
+	GetPostsAddedByUser(userName string, timeFrom, timeTo time.Time) ([]*generated.Post, error)
 }
 
 func NewAddNewPostHandler(posts PostsInterface) gin.HandlerFunc {
@@ -66,7 +77,7 @@ func NewAddNewPostHandler(posts PostsInterface) gin.HandlerFunc {
 			return
 		}
 
-		log.Print("Новый пост успешно создан!")
+		log.Printf("Новый пост успешно создан!")
 
 		ctx.JSON(http.StatusOK, &messages.BaseResponse{
 			Status: "OK",
@@ -90,7 +101,18 @@ func NewGetPostsAddedByUserHandler(posts PostsInterface) gin.HandlerFunc {
 			return
 		}
 
-		posts, err := posts.GetPostsAddedByUser(req.UserName)
+		un, ok := ctx.Get("username")
+		if !ok {
+			errString := fmt.Sprintf("Ошибка сервера, не удалось создать новый пост: %s", "не задано имя пользователя")
+			log.Println(errString)
+			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
+				Status:       "Error",
+				ErrorMessage: errString,
+			})
+			return
+		}
+
+		posts, err := posts.GetPostsAddedByUser(un.(string), req.TimeFrom, req.TimeTo)
 		if err != nil {
 			errString := fmt.Sprintf("Ошибка сервера, не удалось получить посты пользователя пользователя: %s", err.Error())
 			log.Println(errString)
@@ -105,11 +127,16 @@ func NewGetPostsAddedByUserHandler(posts PostsInterface) gin.HandlerFunc {
 			BaseResponse: messages.BaseResponse{
 				Status: "OK",
 			},
-			Colors: make([]string, len(posts)),
+			Posts: make([]post, len(posts)),
 		}
 
 		for i, val := range posts {
-			response.Colors[i] = val.Color
+			response.Posts[i] = post{
+				ID:            val.Id,
+				AutorUserName: val.AutorUserName,
+				TimeOfCreate:  val.TimeOfCreate,
+				Color:         val.Color,
+			}
 		}
 
 		ctx.JSON(http.StatusOK, response)

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package generated;
 
 option go_package = "user_follow_microservice/internal/transport/grpc_server/generated";
@@ -49,6 +51,8 @@ message AddNewPostResponse {
 
 message GetPostsAddedByUserRequest {
     string userName = 1;
+    google.protobuf.Timestamp time_from = 2;
+    google.protobuf.Timestamp time_to = 3;
 }
 
 message GetPostsAddedByUserResponse {
@@ -56,7 +60,7 @@ message GetPostsAddedByUserResponse {
 }
 
 message Post {
-    string id = 1;
+    bytes id = 1;
     string autor_user_name = 2;
     int64 time_of_create = 3;
     string color = 4;

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 	"net"
 	. "user_follow/internal/adapters/transport/grpc_server/generated"
 	"user_follow/internal/core"
@@ -17,7 +18,7 @@ type coreInterface interface {
 	// Добавить пользователя
 	AddNewUser(userName string) error
 	// Прлучить посты, добавленные определенным пользователем
-	GetPostsAddedByUser(userName string) ([]*core.Post, error)
+	GetPostsAddedByUser(username string, timeFrom time.Time, timeTo time.Time) ([]*core.Post, error)
 	// Поставить посту лайк
 	SetPostLike(postID []byte, likedUser string) error
 	// Получить количество лайков поста
@@ -53,7 +54,7 @@ func (s *server) Start() error {
 	RegisterUserFollowServer(s.grpcServer, s)
 
 	// Старт сервера
-	log.Println("Starting gRPC server on :"+s.port)
+	log.Println("<user_follow server.go Start> Starting gRPC server on :"+s.port)
 	go func () {
 		s.grpcServer.Serve(s.listener)
 	}()
@@ -63,7 +64,7 @@ func (s *server) Start() error {
 
 // Создание нового пользователя
 func (s *server)AddNewUser(ctx context.Context, req *AddNewUserRequest) (*AddNewUserResponse, error) {
-	log.Printf("<user_follow core.go AddNewUser> name = %v", req.UserName)
+	//log.Printf("<user_follow server.go AddNewUser> name = %v", req.UserName)
 	err := s.core.AddNewUser(req.UserName)
 	if err != nil {
 		return &AddNewUserResponse{ ResultMessage: "ERROR" }, fmt.Errorf("не удалось создать пользователя: %v", err)
@@ -73,7 +74,7 @@ func (s *server)AddNewUser(ctx context.Context, req *AddNewUserRequest) (*AddNew
 
 // Создание нового поста
 func (s *server)AddNewPost(ctx context.Context, req *AddNewPostRequest) (*AddNewPostResponse, error) {
-	log.Printf("<user_follow core.go AddNewPost> name = %v, color = %v", req.AutorUserName, req.Color)
+	//log.Printf("<user_follow server.go AddNewPost> name = %v, color = %v", req.AutorUserName, req.Color)
 	err := s.core.AddNewPost(req.AutorUserName, req.Color)
 	if err != nil {
 		return &AddNewPostResponse{ ResultMessage: "ERROR" }, fmt.Errorf("не удалось создать пост: %v", err)
@@ -83,14 +84,15 @@ func (s *server)AddNewPost(ctx context.Context, req *AddNewPostRequest) (*AddNew
 
 // Получить созданные пользователем посты
 func (s *server)GetPostsAddedByUser(ctx context.Context, req *GetPostsAddedByUserRequest) (*GetPostsAddedByUserResponse, error) {
-	posts, err := s.core.GetPostsAddedByUser(req.UserName)
+	//log.Printf("<user_follow server.go GetPostsAddedByUser> name = %v", req.UserName)
+	posts, err := s.core.GetPostsAddedByUser(req.UserName, req.TimeFrom.AsTime(), req.TimeTo.AsTime())
 	if err != nil {
 		return &GetPostsAddedByUserResponse{ Posts: nil }, fmt.Errorf("не удалось Получить список постов: %v", err)
 	}
 	resPosts := make([]*Post, len(posts))
 	for i, p := range posts {
 		resPosts[i] = &Post{
-			Id: string(p.ID),
+			Id: p.ID,
 			AutorUserName: p.AutorUserName,
 			TimeOfCreate: p.TimeOfCreate,
 			Color: p.Color,
