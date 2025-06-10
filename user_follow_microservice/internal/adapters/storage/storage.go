@@ -418,6 +418,7 @@ func (neo *Neo4jStorage) GetAllUsers(userName string) ([]*core.UserSubscribeToRe
 				},
 				SubscribeToRequester: record.Values[3].(bool),
 			})
+			log.Printf("<user_follow storage.go GetAllUsers> username = %v, bool = %v", record.Values[1].(string), record.Values[3].(bool))
 		}
 
 		return users, cursor.Err()

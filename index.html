@@ -353,28 +353,35 @@
 
       container.innerHTML += `
         <div class="space-y-4" id="userList">
-          ${users.map(user => `
-            <div class="post bg-white p-4 rounded-lg shadow border-l-4 border-gray-300 flex justify-between items-center">
-              <div class="flex items-center space-x-3">
-                <div class="bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center">
-                  <span class="text-gray-600">${user.username.charAt(0).toUpperCase()}</span>
+          ${users.map(user => {
+            const isSubscribed = user.subscribe_to_requester;
+            const subscribedClass = isSubscribed
+              ? 'bg-gray-400 hover:bg-gray-500'
+              : 'bg-blue-600 hover:bg-blue-700';
+            const buttonText = isSubscribed ? 'Unsubscribe' : 'Subscribe';
+
+            return `
+              <div class="post bg-white p-4 rounded-lg shadow border-l-4 border-gray-300 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                  <div class="bg-gray-200 rounded-full w-10 h-10 flex items-center justify-center">
+                    <span class="text-gray-600">${user.username.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div>
+                    <h3 class="font-medium">${user.username}</h3>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-medium">${user.username}</h3>
-                </div>
+                <button
+                  class="subscribe-btn ${subscribedClass} text-white font-medium py-1 px-4 rounded transition"
+                  data-username="${user.username}"
+                  data-subscribed="${isSubscribed}"
+                >
+                  ${buttonText}
+                </button>
               </div>
-              <button
-                class="subscribe-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-4 rounded transition"
-                data-username="${user.username}"
-                data-subscribed="${user.subscribe_to_requester}"
-              >
-                Subscribe
-              </button>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       `;
-
       document.querySelectorAll('.subscribe-btn').forEach(btn => {
         btn.addEventListener('click', () => toggleSubscribe(btn));
       });

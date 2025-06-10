@@ -67,6 +67,7 @@ func NewGetAllUsersHandler(users UsersInterface) gin.HandlerFunc {
 				UserName: val.UserName,
 				SubscribeToRequester: sub[i],
 			} 
+			log.Printf("username = %v, bool = %v", val.UserName, sub[i])
 		}
 
 		ctx.JSON(http.StatusOK, &getAllUsersResponse{
