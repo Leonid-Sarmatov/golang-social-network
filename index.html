@@ -120,6 +120,7 @@
       }
       // Инициализация табов
       initTabs();
+      loadPosts('feed');
       // Обработчики для постов
       initPostHandlers();
     });
@@ -165,7 +166,16 @@
           
           // При переключении на вкладку feed обновляем посты
           if (link.dataset.tab === 'feed') {
-            loadPosts();
+            loadPosts('feed');
+          }
+
+          // При переключении на вкладку feed обновляем посты
+          if (link.dataset.tab === 'profile') {
+            loadPosts('profile');
+          }
+                    // При переключении на вкладку feed обновляем посты
+          if (link.dataset.tab === 'search') {
+            loadUsers();
           }
         });
       });
@@ -185,31 +195,47 @@
       });
     }
 
-    async function loadPosts() {
+    async function loadPosts(target) {
       try {
         const token = localStorage.getItem('token');
         const timeTo = new Date(); // сейчас
         const timeFrom = new Date(timeTo.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 дней назад
 
-        const response = await fetch('http://localhost:8080/api/posts/getByUserName', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            time_from: timeFrom.toISOString(),
-            time_to: timeTo.toISOString()
-          })
-        });
+        if (target == 'profile') {
+          const response = await fetch('http://localhost:8080/api/posts/getByUserName', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+              time_from: timeFrom.toISOString(),
+              time_to: timeTo.toISOString()
+            })
+          });
 
-        if (!response.ok) {
-          throw new Error('Failed to load posts');
+          if (!response.ok) {
+            throw new Error('Failed to load posts');
+          }
+
+          const posts = await response.json();
+          renderPosts(posts.posts, 'selfPostsContainer');
+        } else {
+          const response = await fetch('http://localhost:8080/api/posts/intended', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to load posts');
+          }
+
+          const posts = await response.json();
+          renderPosts(posts.posts, 'postsContainer');
         }
-
-        const posts = await response.json();
-        renderPosts(posts.posts, 'postsContainer');
-        renderPosts(posts.posts, 'selfPostsContainer');
       } catch (err) {
         console.error('Error loading posts:', err);
         document.getElementById('postsContainer').innerHTML = `
@@ -276,7 +302,8 @@
         }
 
         document.getElementById('postContent').value = '';
-        loadPosts();
+        loadPosts('feed');
+        loadPosts('profile');
         console.log('OK');
       } catch (err) {
         console.error('Error creating post:', err);
@@ -295,6 +322,7 @@
       try {
         const token = localStorage.getItem('token');
         const response = await fetch('http://localhost:8080/api/users/getAll', {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -303,7 +331,7 @@
         if (!response.ok) throw new Error('Failed to load users');
 
         const users = await response.json();
-        renderUsers(users);
+        renderUsers(users.users);
       } catch (err) {
         console.error('Error loading users:', err);
         document.getElementById('search').innerHTML = `
@@ -338,7 +366,7 @@
               <button
                 class="subscribe-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-4 rounded transition"
                 data-username="${user.username}"
-                data-subscribed="false"
+                data-subscribed="${user.subscribe_to_requester}"
               >
                 Subscribe
               </button>
@@ -365,7 +393,7 @@
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            target_user: username,
+            username: username,
             subscribe: !subscribed
           })
         });

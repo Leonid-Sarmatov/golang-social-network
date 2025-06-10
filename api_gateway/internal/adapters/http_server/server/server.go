@@ -6,6 +6,7 @@ import (
 	"api_gateway/internal/adapters/http_server/handlers/login"
 	"api_gateway/internal/adapters/http_server/handlers/posts"
 	"api_gateway/internal/adapters/http_server/handlers/register"
+	"api_gateway/internal/adapters/http_server/handlers/users"
 	"log"
 	"net/http"
 	"strings"
@@ -57,12 +58,14 @@ func (s *server) Init() {
 
 	// Создать пост
 	authorized.POST("/api/posts/create", posts.NewAddNewPostHandler(&s.UserFollowGRPC))
-	// Получить посты
+	// Получить посты от конкретного пользователя
 	authorized.POST("/api/posts/getByUserName", posts.NewGetPostsAddedByUserHandler(&s.UserFollowGRPC))
+	// Получить посты для пользователя от всех его подписок
+	authorized.POST("/api/posts/intended", posts.NewGetPostsIntendedForTheUserHandler(&s.UserFollowGRPC))
 	// Получить всех пользователей
-	authorized.POST("/api/users/getAll")
+	authorized.POST("/api/users/getAll", users.NewGetAllUsersHandler(&s.UserFollowGRPC))
 	// Подписать одного пользователя на другого
-	authorized.POST("/api/users/subscribe")
+	authorized.POST("/api/users/subscribe", users.NewSubscribeUsersHandler(&s.UserFollowGRPC))
 
 	/* -------- Вызовы перенапрявляемые микросервису контента ------- */
 	//r.GET("/", nil)

@@ -13,15 +13,15 @@ import (
 )
 
 type UserFollowGRPC struct {
-	ip string
-	port string
-	connection *grpc.ClientConn
+	ip               string
+	port             string
+	connection       *grpc.ClientConn
 	userFollowClient UserFollowClient
 }
 
 func NewUserAuthorizationClient(ip, port string) *UserFollowGRPC {
 	return &UserFollowGRPC{
-		ip: ip,
+		ip:   ip,
 		port: port,
 	}
 }
@@ -54,7 +54,7 @@ func (c *UserFollowGRPC) AddNewUser(userName string) (string, error) {
 func (c *UserFollowGRPC) AddNewPost(userName, color string) (string, error) {
 	res, err := c.userFollowClient.AddNewPost(context.Background(), &AddNewPostRequest{
 		AutorUserName: userName,
-		Color: color,
+		Color:         color,
 	})
 	if err != nil {
 		log.Printf("Failed to AddNewPost: %v", err)
@@ -68,7 +68,7 @@ func (c *UserFollowGRPC) GetPostsAddedByUser(userName string, timeFrom, timeTo t
 	res, err := c.userFollowClient.GetPostsAddedByUser(context.Background(), &GetPostsAddedByUserRequest{
 		UserName: userName,
 		TimeFrom: timestamppb.New(timeFrom),
-		TimeTo: timestamppb.New(timeTo),
+		TimeTo:   timestamppb.New(timeTo),
 	})
 	if err != nil {
 		log.Printf("Failed to GetPostsAddedByUser: %v", err)
@@ -78,6 +78,39 @@ func (c *UserFollowGRPC) GetPostsAddedByUser(userName string, timeFrom, timeTo t
 	return res.Posts, nil
 }
 
+func (c *UserFollowGRPC) GetAllUsers(requesterUserName string) ([]*User, []bool, error) {
+	res, err := c.userFollowClient.GetAllUsers(context.Background(), &GetAllUsersRequest{
+		RequesterUserName: requesterUserName,
+	})
+	if err != nil {
+		log.Printf("Failed to GetAllUsers: %v", err)
+		return nil, nil, err
+	}
+	log.Printf("Successfull GetAllUsers")
+	return res.Users, res.SubscribeToRequester, nil
+}
 
+func (c *UserFollowGRPC) GetPostsIntendedForTheUser(requesterUserName string) ([]*Post, error) {
+	res, err := c.userFollowClient.GetPostsIntendedForTheUser(context.Background(), &GetPostsIntendedForTheUserRequest{
+		UserName: requesterUserName,
+	})
+	if err != nil {
+		log.Printf("Failed to GetPostsIntendedForTheUser: %v", err)
+		return nil, err
+	}
+	log.Printf("Successfull GetPostsIntendedForTheUser")
+	return res.Posts, nil
+}
 
-
+func (c *UserFollowGRPC) SubscribeUsers(userName, subscriberUserName string) error {
+	_, err := c.userFollowClient.SubscribeUsers(context.Background(), &SubscribeUsersRequest{
+		UserName: userName,
+		SubscriberUserName: subscriberUserName,
+	})
+		if err != nil {
+		log.Printf("Failed to SubscribeUsers: %v", err)
+		return err
+	}
+	log.Printf("Successfull SubscribeUsers")
+	return nil
+}

@@ -23,6 +23,8 @@ type coreInterface interface {
 	GetPostsIntendedForTheUser(username string) ([]*core.Post, error)
 	// Получить вообще всех пользователей
     GetAllUsers(username string) ([]*core.UserSubscribeToRequesterDecorator, error)
+	// Подписать пользователей
+	SubscribeUsers(userName, subscriberUserName string) error
 	// Поставить посту лайк
 	//SetPostLike(postID []byte, likedUser string) error
 	// Получить количество лайков поста
@@ -128,23 +130,28 @@ func (s *server)GetPostsIntendedForTheUser(ctx context.Context, req *GetPostsInt
 
 // Подписать одного пользователя на другого
 func (s *server)SubscribeUsers(ctx context.Context, req *SubscribeUsersRequest) (*SubscribeUsersResponse, error) {
-	return nil, nil
+	err := s.core.SubscribeUsers(req.UserName, req.SubscriberUserName)
+	if err != nil {
+		return &SubscribeUsersResponse{ ResultMessage: "ERROR" }, fmt.Errorf("не удалось подписать пользователей: %v", err)
+	}
+	return &SubscribeUsersResponse{ ResultMessage: "OK" }, nil
 }
 
 // Получить всех пользователей
 func (s *server)GetAllUsers(ctx context.Context, req *GetAllUsersRequest) (*GetAllUsersResponse, error) {
 	users, err := s.core.GetAllUsers(req.RequesterUserName)
 	if err != nil {
-		return &GetAllUsersResponse{ Users: nil }, fmt.Errorf("не удалось получить список постов: %v", err)
+		return &GetAllUsersResponse{ Users: nil }, fmt.Errorf("не удалось получить список пользователей: %v", err)
 	}
 	resUsers := make([]*User, len(users))
+	subscribe_to_requester := make([]bool, len(users))
 	for i, u := range users {
 		resUsers[i] = &User{
 			UserName: u.UserName,
-
 		}
+		subscribe_to_requester[i] = u.SubscribeToRequester
 	}
-	return &GetAllUsersResponse{ Users: resUsers }, nil
+	return &GetAllUsersResponse{ Users: resUsers, SubscribeToRequester: subscribe_to_requester}, nil
 }
 
 // // Получить количество подписок и подписчиков пользователя

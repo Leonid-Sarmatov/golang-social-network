@@ -207,7 +207,6 @@ func (c *Core)GetPostsIntendedForTheUser(userName string) ([]*Post, error) {
 	return p, nil
 }
 
-	// Получить вообще всех пользователей
 /*
 GetAllUsers возвращает вообще всех пользователей
 
@@ -229,6 +228,29 @@ func (c *Core)GetAllUsers(userName string) ([]*UserSubscribeToRequesterDecorator
 		return nil, errors.Join(ErrReadData, fmt.Errorf("невозможно прочитать посты созданные пользователем %v: %v", userName, err))
 	}
 	return u, nil
+}
+
+/*
+SubscribeUsers подписывает пользователей
+
+Аргументы:
+  - userName string: пользователь, на которого подписываются
+  - subscriberUserName string: пользователь подписчик
+
+Возвращает:
+  - error: ошибка
+*/
+func (c *Core)SubscribeUsers(userName, subscriberUserName string) error {
+	// Проверка входных параметров
+	if userName == "" || subscriberUserName == "" {
+		return errors.Join(ErrIncorrectData, fmt.Errorf("некорректные входные параметры"))
+	}
+	// Запись в хранилище информации о подписке одного пользователя на другого
+	err := c.UserStorage.SubscribeUsers(userName, subscriberUserName)
+	if err != nil {
+		return errors.Join(ErrWriteData, fmt.Errorf("неудалось подписать пользователя %v: %v", userName, err))
+	}
+	return nil
 }
 
 // func (c *Core) SetPostLike(postID []byte, likedUser string) error {

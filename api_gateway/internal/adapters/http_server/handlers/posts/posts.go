@@ -37,6 +37,7 @@ type getPostsAddedByUserResponse struct {
 type PostsInterface interface {
 	AddNewPost(userName, color string) (string, error)
 	GetPostsAddedByUser(userName string, timeFrom, timeTo time.Time) ([]*generated.Post, error)
+	GetPostsIntendedForTheUser(requesterUserName string) ([]*generated.Post, error)
 }
 
 func NewAddNewPostHandler(posts PostsInterface) gin.HandlerFunc {
@@ -103,7 +104,7 @@ func NewGetPostsAddedByUserHandler(posts PostsInterface) gin.HandlerFunc {
 
 		un, ok := ctx.Get("username")
 		if !ok {
-			errString := fmt.Sprintf("Ошибка сервера, не удалось создать новый пост: %s", "не задано имя пользователя")
+			errString := fmt.Sprintf("Ошибка сервера, не удалось получить посты: %s", "не задано имя пользователя")
 			log.Println(errString)
 			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
 				Status:       "Error",
@@ -114,7 +115,53 @@ func NewGetPostsAddedByUserHandler(posts PostsInterface) gin.HandlerFunc {
 
 		posts, err := posts.GetPostsAddedByUser(un.(string), req.TimeFrom, req.TimeTo)
 		if err != nil {
-			errString := fmt.Sprintf("Ошибка сервера, не удалось получить посты пользователя пользователя: %s", err.Error())
+			errString := fmt.Sprintf("Ошибка сервера, не удалось получить посты: %s", err.Error())
+			log.Println(errString)
+			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
+				Status:       "Error",
+				ErrorMessage: errString,
+			})
+			return
+		}
+
+		response := &getPostsAddedByUserResponse{
+			BaseResponse: messages.BaseResponse{
+				Status: "OK",
+			},
+			Posts: make([]post, len(posts)),
+		}
+
+		for i, val := range posts {
+			response.Posts[i] = post{
+				ID:            val.Id,
+				AutorUserName: val.AutorUserName,
+				TimeOfCreate:  val.TimeOfCreate,
+				Color:         val.Color,
+			}
+		}
+
+		ctx.JSON(http.StatusOK, response)
+	}
+}
+
+func NewGetPostsIntendedForTheUserHandler(posts PostsInterface) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		log.Print(" -> NewGetPostsIntendedForTheUserHandler")
+
+		un, ok := ctx.Get("username")
+		if !ok {
+			errString := fmt.Sprintf("Ошибка сервера, не удалось получить посты: %s", "не задано имя пользователя")
+			log.Println(errString)
+			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
+				Status:       "Error",
+				ErrorMessage: errString,
+			})
+			return
+		}
+
+		posts, err := posts.GetPostsIntendedForTheUser(un.(string))
+		if err != nil {
+			errString := fmt.Sprintf("Ошибка сервера, не удалось получить посты: %s", err.Error())
 			log.Println(errString)
 			ctx.JSON(http.StatusBadGateway, &messages.BaseResponse{
 				Status:       "Error",
